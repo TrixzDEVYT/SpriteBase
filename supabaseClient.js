@@ -9,7 +9,7 @@
 // =====================================================================
 
 const SUPABASE_URL = "https://dtqhshpiugfplpbgmlag.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_mvyk7zH8EN9rbuFF_I8cgA_REEMPLAZA_ESTO";
+const SUPABASE_ANON_KEY = "sb_publishable_mvyk7zH8EN9rbuFF_I8cgA_ca9rW5YK";
 
 // El objeto `supabase` global viene del script CDN cargado en index.html
 const { createClient } = supabase;
