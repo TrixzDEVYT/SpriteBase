@@ -1,0 +1,35 @@
+body {
+  font-family: system-ui, sans-serif;
+  background: #111;
+  color: #eee;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  margin: 0;
+}
+
+.card {
+  background: #1c1c1c;
+  border: 1px solid #333;
+  border-radius: 12px;
+  padding: 2rem 3rem;
+  text-align: center;
+}
+
+.status {
+  margin-top: 1rem;
+  font-size: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+}
+
+.status.ok {
+  background: #14331f;
+  color: #6fdc8c;
+}
+
+.status.error {
+  background: #3a1616;
+  color: #ff8080;
+}
