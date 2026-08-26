@@ -53,7 +53,7 @@
       return `<span class="badge badge-${rarity}">${rarity}</span>`;
     }
 
-    function spriteCard(sprite, { showQuantity, removable, onRemove }) {
+    function spriteCard(sprite, { removable, onRemove }) {
       const div = document.createElement("div");
       div.className = `sprite-card rarity-${sprite.rarity}`;
       div.innerHTML = `
@@ -62,7 +62,6 @@
           ? `<img src="${sprite.image_url}" style="width:100%; aspect-ratio:1; object-fit:cover; border-radius:10px; margin-top:0.6rem;" onerror="this.style.display='none'" />`
           : ""}
         <div class="sprite-card-name">${sprite.variant_name}</div>
-        ${showQuantity ? `<div style="color: var(--text-muted); font-size: 0.85rem;">Cantidad: ${sprite.quantity}</div>` : ""}
       `;
       if (removable) {
         const btn = document.createElement("button");
@@ -121,9 +120,8 @@
       grid.innerHTML = "";
       data.forEach(row => {
         const card = spriteCard(
-          { ...row.sprites, quantity: row.quantity },
+          row.sprites,
           {
-            showQuantity: true,
             removable: true,
             onRemove: async () => {
               await db.from("user_sprites_owned").delete().eq("id", row.id);
@@ -156,7 +154,6 @@
         const card = spriteCard(
           row.sprites,
           {
-            showQuantity: false,
             removable: true,
             onRemove: async () => {
               await db.from("user_sprites_wanted").delete().eq("id", row.id);
