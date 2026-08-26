@@ -61,8 +61,11 @@
       });
     });
 
-    function chip(text) {
-      return `<span class="chip">${text}</span>`;
+    function chip(sprite) {
+      const thumb = sprite.image_url
+        ? `<img src="${sprite.image_url}" style="width:16px; height:16px; object-fit:cover; border-radius:4px; vertical-align:middle; margin-right:0.35rem;" onerror="this.style.display='none'" />`
+        : "";
+      return `<span class="chip">${thumb}${sprite.variant_name}</span>`;
     }
 
     async function loadTrades() {
@@ -74,8 +77,8 @@
         .select(`
           id, title, description, created_at,
           profiles ( username ),
-          trade_offer_items ( sprites ( variant_name, rarity ) ),
-          trade_want_items ( sprites ( variant_name, rarity ) )
+          trade_offer_items ( sprites ( variant_name, rarity, image_url ) ),
+          trade_want_items ( sprites ( variant_name, rarity, image_url ) )
         `)
         .eq("status", "active")
         .order("created_at", { ascending: false });
@@ -92,8 +95,8 @@
 
       list.innerHTML = "";
       data.forEach(trade => {
-        const offerChips = trade.trade_offer_items.map(i => chip(i.sprites.variant_name)).join("") || "—";
-        const wantChips = trade.trade_want_items.map(i => chip(i.sprites.variant_name)).join("") || "—";
+        const offerChips = trade.trade_offer_items.map(i => chip(i.sprites)).join("") || "—";
+        const wantChips = trade.trade_want_items.map(i => chip(i.sprites)).join("") || "—";
 
         const card = document.createElement("div");
         card.className = "trade-card";

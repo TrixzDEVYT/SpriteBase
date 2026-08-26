@@ -58,6 +58,9 @@
       div.className = `sprite-card rarity-${sprite.rarity}`;
       div.innerHTML = `
         ${rarityBadge(sprite.rarity)}
+        ${sprite.image_url
+          ? `<img src="${sprite.image_url}" style="width:100%; aspect-ratio:1; object-fit:cover; border-radius:10px; margin-top:0.6rem;" onerror="this.style.display='none'" />`
+          : ""}
         <div class="sprite-card-name">${sprite.variant_name}</div>
         ${showQuantity ? `<div style="color: var(--text-muted); font-size: 0.85rem;">Cantidad: ${sprite.quantity}</div>` : ""}
       `;
@@ -103,7 +106,7 @@
       const grid = document.getElementById("owned-grid");
       const { data, error } = await db
         .from("user_sprites_owned")
-        .select("id, quantity, sprites(id, variant_name, rarity)")
+        .select("id, quantity, sprites(id, variant_name, rarity, image_url)")
         .eq("user_id", currentUser.id);
 
       if (error) {
@@ -136,7 +139,7 @@
       const grid = document.getElementById("wanted-grid");
       const { data, error } = await db
         .from("user_sprites_wanted")
-        .select("id, sprites(id, variant_name, rarity)")
+        .select("id, sprites(id, variant_name, rarity, image_url)")
         .eq("user_id", currentUser.id);
 
       if (error) {
