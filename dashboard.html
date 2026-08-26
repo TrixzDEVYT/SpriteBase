@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SpriteBase — Dashboard</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="site-header"></div>
+
+  <div class="page">
+    <div class="page-header">
+      <h1 id="welcome-title">Bienvenido</h1>
+      <p>Este es tu resumen en SpriteBase.</p>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-value" id="stat-owned">—</div>
+        <div class="stat-label">Sprites en tu colección</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-wanted">—</div>
+        <div class="stat-label">Sprites que buscas</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-trades">—</div>
+        <div class="stat-label">Trades activos</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-bottom: 1rem;">Acciones rápidas</h3>
+      <div style="display:flex; gap: 0.8rem; flex-wrap: wrap;">
+        <a href="collection.html" class="btn btn-primary">Editar mi colección</a>
+        <a href="trades.html" class="btn btn-ghost">Ver trades</a>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabaseClient.js"></script>
+  <script src="auth.js"></script>
+  <script>
+    (async () => {
+      const user = await requireAuth();
+      if (!user) return;
+
+      await renderNav("dashboard.html");
+
+      const { data: profile } = await db
+        .from("profiles")
+        .select("username")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      document.getElementById("welcome-title").textContent =
+        "Bienvenido, " + (profile?.username || "de nuevo");
+
+      const [{ count: ownedCount }, { count: wantedCount }, { count: tradesCount }] =
+        await Promise.all([
+          db.from("user_sprites_owned").select("*", { count: "exact", head: true }).eq("user_id", user.id),
+          db.from("user_sprites_wanted").select("*", { count: "exact", head: true }).eq("user_id", user.id),
+          db.from("trades").select("*", { count: "exact", head: true }).eq("user_id", user.id).eq("status", "active"),
+        ]);
+
+      document.getElementById("stat-owned").textContent = ownedCount ?? 0;
+      document.getElementById("stat-wanted").textContent = wantedCount ?? 0;
+      document.getElementById("stat-trades").textContent = tradesCount ?? 0;
+    })();
+  </script>
+</body>
+</html>

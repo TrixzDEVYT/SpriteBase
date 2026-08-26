@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SpriteBase — Trades</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="site-header"></div>
+
+  <div class="page">
+    <div class="page-header">
+      <h1>Trades</h1>
+      <p>Explora ofertas activas o crea la tuya.</p>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="browse">Explorar</button>
+      <button class="tab" data-tab="create">Crear trade</button>
+    </div>
+
+    <div id="browse-section">
+      <div id="trades-list" style="display:flex; flex-direction:column; gap: 1rem;"></div>
+    </div>
+
+    <div id="create-section" style="display:none;">
+      <div class="card">
+        <label for="trade-title">Título</label>
+        <input type="text" id="trade-title" placeholder="Busco Fishstick, tengo Gustambo" maxlength="100" />
+
+        <label for="trade-description">Descripción (opcional)</label>
+        <textarea id="trade-description" placeholder="Detalles adicionales sobre tu oferta..." maxlength="2000"></textarea>
+
+        <label>Ofrezco (de tu colección)</label>
+        <div id="offer-checkboxes" class="card" style="background: var(--bg); margin-bottom:1.1rem;"></div>
+
+        <label>Busco</label>
+        <div id="want-checkboxes" class="card" style="background: var(--bg); margin-bottom:1.1rem;"></div>
+
+        <div id="create-status"></div>
+        <button class="btn btn-primary" id="create-trade-btn">Publicar trade</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabaseClient.js"></script>
+  <script src="auth.js"></script>
+  <script>
+    let currentUser = null;
+
+    document.querySelectorAll(".tab").forEach(tab => {
+      tab.addEventListener("click", () => {
+        document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+        tab.classList.add("active");
+        const isBrowse = tab.dataset.tab === "browse";
+        document.getElementById("browse-section").style.display = isBrowse ? "block" : "none";
+        document.getElementById("create-section").style.display = isBrowse ? "none" : "block";
+        if (!isBrowse) loadUserSpritesForForm();
+      });
+    });
+
+    function chip(text) {
+      return `<span class="chip">${text}</span>`;
+    }
+
+    async function loadTrades() {
+      const list = document.getElementById("trades-list");
+      list.innerHTML = `<p style="color: var(--text-muted);">Cargando trades...</p>`;
+
+      const { data, error } = await db
+        .from("trades")
+        .select(`
+          id, title, description, created_at,
+          profiles ( username ),
+          trade_offer_items ( sprites ( variant_name, rarity ) ),
+          trade_want_items ( sprites ( variant_name, rarity ) )
+        `)
+        .eq("status", "active")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        list.innerHTML = `<div class="status-message error">${error.message}</div>`;
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        list.innerHTML = `<div class="empty-state">Todavía no hay trades activos. ¡Sé el primero!</div>`;
+        return;
+      }
+
+      list.innerHTML = "";
+      data.forEach(trade => {
+        const offerChips = trade.trade_offer_items.map(i => chip(i.sprites.variant_name)).join("") || "—";
+        const wantChips = trade.trade_want_items.map(i => chip(i.sprites.variant_name)).join("") || "—";
+
+        const card = document.createElement("div");
+        card.className = "trade-card";
+        card.innerHTML = `
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div class="trade-card-title">${trade.title}</div>
+            <span style="color: var(--text-muted); font-size:0.85rem;">@${trade.profiles?.username || "usuario"}</span>
+          </div>
+          ${trade.description ? `<p style="color: var(--text-muted); font-size:0.9rem; margin:0;">${trade.description}</p>` : ""}
+          <div class="trade-columns">
+            <div>
+              <div class="trade-col-label">Ofrece</div>
+              ${offerChips}
+            </div>
+            <div>
+              <div class="trade-col-label">Busca</div>
+              ${wantChips}
+            </div>
+          </div>
+        `;
+        list.appendChild(card);
+      });
+    }
+
+    async function loadUserSpritesForForm() {
+      const [{ data: owned }, { data: wanted }] = await Promise.all([
+        db.from("user_sprites_owned").select("sprite_id, sprites(variant_name)").eq("user_id", currentUser.id),
+        db.from("user_sprites_wanted").select("sprite_id, sprites(variant_name)").eq("user_id", currentUser.id),
+      ]);
+
+      const offerBox = document.getElementById("offer-checkboxes");
+      const wantBox = document.getElementById("want-checkboxes");
+
+      offerBox.innerHTML = (owned && owned.length)
+        ? owned.map(o => `
+            <label style="display:flex; align-items:center; gap:0.5rem; font-weight:400; color: var(--text);">
+              <input type="checkbox" value="${o.sprite_id}" class="offer-check" style="width:auto; margin:0;" />
+              ${o.sprites.variant_name}
+            </label>`).join("")
+        : `<p style="color: var(--text-muted); margin:0;">Añade Sprites a tu colección primero.</p>`;
+
+      wantBox.innerHTML = (wanted && wanted.length)
+        ? wanted.map(w => `
+            <label style="display:flex; align-items:center; gap:0.5rem; font-weight:400; color: var(--text);">
+              <input type="checkbox" value="${w.sprite_id}" class="want-check" style="width:auto; margin:0;" />
+              ${w.sprites.variant_name}
+            </label>`).join("")
+        : `<p style="color: var(--text-muted); margin:0;">Añade Sprites a tu lista de búsqueda primero.</p>`;
+    }
+
+    document.getElementById("create-trade-btn").addEventListener("click", async () => {
+      const statusEl = document.getElementById("create-status");
+      const title = document.getElementById("trade-title").value.trim();
+      const description = document.getElementById("trade-description").value.trim();
+      const offerIds = [...document.querySelectorAll(".offer-check:checked")].map(c => c.value);
+      const wantIds = [...document.querySelectorAll(".want-check:checked")].map(c => c.value);
+
+      if (title.length < 3) {
+        statusEl.innerHTML = `<div class="status-message error">El título necesita al menos 3 caracteres.</div>`;
+        return;
+      }
+      if (offerIds.length === 0 || wantIds.length === 0) {
+        statusEl.innerHTML = `<div class="status-message error">Selecciona al menos un Sprite en cada lado.</div>`;
+        return;
+      }
+
+      const { data: trade, error: tradeError } = await db
+        .from("trades")
+        .insert({ user_id: currentUser.id, title, description: description || null })
+        .select()
+        .single();
+
+      if (tradeError) {
+        statusEl.innerHTML = `<div class="status-message error">${tradeError.message}</div>`;
+        return;
+      }
+
+      const offerRows = offerIds.map(id => ({ trade_id: trade.id, sprite_id: id }));
+      const wantRows = wantIds.map(id => ({ trade_id: trade.id, sprite_id: id }));
+
+      const [{ error: offerError }, { error: wantError }] = await Promise.all([
+        db.from("trade_offer_items").insert(offerRows),
+        db.from("trade_want_items").insert(wantRows),
+      ]);
+
+      if (offerError || wantError) {
+        statusEl.innerHTML = `<div class="status-message error">Trade creado pero hubo un problema con los items.</div>`;
+        return;
+      }
+
+      statusEl.innerHTML = `<div class="status-message success">¡Trade publicado!</div>`;
+      document.getElementById("trade-title").value = "";
+      document.getElementById("trade-description").value = "";
+      document.querySelectorAll(".offer-check, .want-check").forEach(c => c.checked = false);
+
+      document.querySelector('.tab[data-tab="browse"]').click();
+      loadTrades();
+    });
+
+    (async () => {
+      currentUser = await requireAuth();
+      if (!currentUser) return;
+
+      await renderNav("trades.html");
+      await loadTrades();
+    })();
+  </script>
+</body>
+</html>

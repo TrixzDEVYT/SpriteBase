@@ -1,0 +1,424 @@
+/* =====================================================================
+   SpriteBase · Design System
+   Tema "Loot Locker": índigo oscuro + acentos por rareza.
+   ===================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&display=swap');
+
+:root {
+  /* Superficies */
+  --bg: #14121f;
+  --surface: #1e1b2e;
+  --surface-hover: #262239;
+  --border: #322c4a;
+
+  /* Texto */
+  --text: #f1eefb;
+  --text-muted: #9c93b8;
+
+  /* Acento principal */
+  --accent: #8b5cf6;
+  --accent-hover: #7c3aed;
+
+  /* Rareza */
+  --rarity-common: #9ca3af;
+  --rarity-rare: #4da6ff;
+  --rarity-epic: #b855f2;
+  --rarity-legendary: #ffa53c;
+  --rarity-mythic: #ff5c8a;
+
+  /* Estado */
+  --success: #4ade80;
+  --error: #ff6b6b;
+
+  --radius: 14px;
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-body: 'Inter', sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  background-image:
+    radial-gradient(circle at 20% 0%, rgba(139, 92, 246, 0.08), transparent 40%),
+    radial-gradient(circle at 80% 100%, rgba(255, 92, 138, 0.06), transparent 40%);
+  color: var(--text);
+  font-family: var(--font-body);
+  min-height: 100vh;
+}
+
+h1, h2, h3 {
+  font-family: var(--font-display);
+  margin: 0;
+}
+
+a { color: inherit; }
+
+/* ---------------------------------------------------------------------
+   Navegación
+   --------------------------------------------------------------------- */
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.1rem 2rem;
+  border-bottom: 1px solid var(--border);
+  background: rgba(20, 18, 31, 0.85);
+  backdrop-filter: blur(8px);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.nav-brand {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.3rem;
+  letter-spacing: -0.02em;
+}
+
+.nav-brand span { color: var(--accent); }
+
+.nav-links {
+  display: flex;
+  gap: 1.75rem;
+  align-items: center;
+}
+
+.nav-links a {
+  text-decoration: none;
+  color: var(--text-muted);
+  font-weight: 500;
+  font-size: 0.95rem;
+  transition: color 0.15s ease;
+}
+
+.nav-links a:hover, .nav-links a.active {
+  color: var(--text);
+}
+
+/* ---------------------------------------------------------------------
+   Layout
+   --------------------------------------------------------------------- */
+.page {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem 4rem;
+}
+
+.page-header {
+  margin-bottom: 2rem;
+}
+
+.page-header p {
+  color: var(--text-muted);
+  margin-top: 0.4rem;
+}
+
+/* ---------------------------------------------------------------------
+   Tarjetas base
+   --------------------------------------------------------------------- */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+}
+
+/* ---------------------------------------------------------------------
+   Botones
+   --------------------------------------------------------------------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.65rem 1.3rem;
+  border-radius: 10px;
+  border: none;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: transform 0.1s ease, background 0.15s ease;
+}
+
+.btn:active { transform: scale(0.97); }
+
+.btn-primary {
+  background: var(--accent);
+  color: white;
+}
+.btn-primary:hover { background: var(--accent-hover); }
+
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+.btn-ghost:hover { background: var(--surface-hover); }
+
+.btn-danger {
+  background: rgba(255, 107, 107, 0.15);
+  color: var(--error);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ---------------------------------------------------------------------
+   Formularios
+   --------------------------------------------------------------------- */
+label {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 0.35rem;
+  font-weight: 500;
+}
+
+input, textarea, select {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.7rem 0.9rem;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  margin-bottom: 1.1rem;
+}
+
+input:focus, textarea:focus, select:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+textarea { resize: vertical; min-height: 80px; }
+
+/* ---------------------------------------------------------------------
+   Badges de rareza
+   --------------------------------------------------------------------- */
+.badge {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  text-transform: capitalize;
+}
+
+.badge-common     { background: rgba(156,163,175,0.18); color: var(--rarity-common); }
+.badge-rare       { background: rgba(77,166,255,0.18);  color: var(--rarity-rare); }
+.badge-epic       { background: rgba(184,85,242,0.18);  color: var(--rarity-epic); }
+.badge-legendary  { background: rgba(255,165,60,0.18);  color: var(--rarity-legendary); }
+.badge-mythic     { background: rgba(255,92,138,0.18);  color: var(--rarity-mythic); }
+
+/* ---------------------------------------------------------------------
+   Tarjeta de Sprite (con halo de rareza — elemento de firma)
+   --------------------------------------------------------------------- */
+.sprite-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem;
+  position: relative;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.sprite-card:hover {
+  transform: translateY(-3px);
+}
+
+.sprite-card.rarity-common    { box-shadow: 0 0 0 1px rgba(156,163,175,0.3), 0 8px 24px -12px rgba(156,163,175,0.4); }
+.sprite-card.rarity-rare      { box-shadow: 0 0 0 1px rgba(77,166,255,0.35), 0 8px 24px -12px rgba(77,166,255,0.5); }
+.sprite-card.rarity-epic      { box-shadow: 0 0 0 1px rgba(184,85,242,0.35), 0 8px 24px -12px rgba(184,85,242,0.5); }
+.sprite-card.rarity-legendary { box-shadow: 0 0 0 1px rgba(255,165,60,0.35), 0 8px 24px -12px rgba(255,165,60,0.5); }
+.sprite-card.rarity-mythic    { box-shadow: 0 0 0 1px rgba(255,92,138,0.35), 0 8px 24px -12px rgba(255,92,138,0.5); }
+
+.sprite-card-name {
+  font-weight: 600;
+  margin: 0.6rem 0 0.3rem;
+}
+
+.sprite-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 1rem;
+}
+
+/* ---------------------------------------------------------------------
+   Tarjeta de Trade
+   --------------------------------------------------------------------- */
+.trade-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.trade-card-title { font-size: 1.05rem; font-weight: 600; }
+
+.trade-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.trade-col-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 0.4rem;
+}
+
+.chip {
+  display: inline-block;
+  font-size: 0.82rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  padding: 0.25rem 0.6rem;
+  border-radius: 8px;
+  margin: 0 0.3rem 0.3rem 0;
+}
+
+/* ---------------------------------------------------------------------
+   Stats (dashboard)
+   --------------------------------------------------------------------- */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1rem;
+  margin: 1.5rem 0 2.5rem;
+}
+
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.2rem;
+}
+
+.stat-value {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.stat-label {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin-top: 0.2rem;
+}
+
+/* ---------------------------------------------------------------------
+   Tabs
+   --------------------------------------------------------------------- */
+.tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.tab {
+  padding: 0.7rem 0.2rem;
+  margin-right: 1.5rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  background: none;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+}
+
+.tab.active {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+
+/* ---------------------------------------------------------------------
+   Estados: vacío / error / carga
+   --------------------------------------------------------------------- */
+.empty-state {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--text-muted);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+}
+
+.status-message {
+  padding: 0.8rem 1rem;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.status-message.error { background: rgba(255,107,107,0.12); color: var(--error); }
+.status-message.success { background: rgba(74,222,128,0.12); color: var(--success); }
+
+/* ---------------------------------------------------------------------
+   Auth (login / signup)
+   --------------------------------------------------------------------- */
+.auth-wrapper {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 380px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 2rem;
+}
+
+.auth-title {
+  font-size: 1.6rem;
+  margin-bottom: 0.3rem;
+}
+
+.auth-subtitle {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin-bottom: 1.5rem;
+}
+
+.auth-switch {
+  text-align: center;
+  margin-top: 1rem;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.auth-switch button {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+}
+
+@media (max-width: 640px) {
+  .trade-columns { grid-template-columns: 1fr; }
+  .nav-links { gap: 1rem; }
+}

@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SpriteBase — Mi Colección</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="site-header"></div>
+
+  <div class="page">
+    <div class="page-header">
+      <h1>Mi Colección</h1>
+      <p>Marca los Sprites que tienes y los que buscas.</p>
+    </div>
+
+    <div class="card" style="margin-bottom: 1.5rem;">
+      <label for="sprite-select" style="margin-bottom: 0.5rem;">Añadir un Sprite</label>
+      <div style="display:flex; gap: 0.6rem; flex-wrap: wrap; align-items: flex-start;">
+        <select id="sprite-select" style="flex: 1; min-width: 200px;">
+          <option value="">Cargando catálogo...</option>
+        </select>
+        <button class="btn btn-primary" id="add-owned-btn">+ Lo tengo</button>
+        <button class="btn btn-ghost" id="add-wanted-btn">+ Lo busco</button>
+      </div>
+      <div id="add-status"></div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="owned">Tengo</button>
+      <button class="tab" data-tab="wanted">Busco</button>
+    </div>
+
+    <div id="owned-section">
+      <div id="owned-grid" class="sprite-grid"></div>
+    </div>
+
+    <div id="wanted-section" style="display:none;">
+      <div id="wanted-grid" class="sprite-grid"></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabaseClient.js"></script>
+  <script src="auth.js"></script>
+  <script>
+    let currentUser = null;
+    let allSprites = [];
+
+    function rarityBadge(rarity) {
+      return `<span class="badge badge-${rarity}">${rarity}</span>`;
+    }
+
+    function spriteCard(sprite, { showQuantity, removable, onRemove }) {
+      const div = document.createElement("div");
+      div.className = `sprite-card rarity-${sprite.rarity}`;
+      div.innerHTML = `
+        ${rarityBadge(sprite.rarity)}
+        <div class="sprite-card-name">${sprite.variant_name}</div>
+        ${showQuantity ? `<div style="color: var(--text-muted); font-size: 0.85rem;">Cantidad: ${sprite.quantity}</div>` : ""}
+      `;
+      if (removable) {
+        const btn = document.createElement("button");
+        btn.className = "btn btn-danger";
+        btn.textContent = "Quitar";
+        btn.style.cssText = "width:100%; margin-top:0.7rem; padding:0.4rem;";
+        btn.addEventListener("click", onRemove);
+        div.appendChild(btn);
+      }
+      return div;
+    }
+
+    function renderEmpty(container, message) {
+      container.innerHTML = `<div class="empty-state">${message}</div>`;
+    }
+
+    async function loadCatalog() {
+      const { data, error } = await db
+        .from("sprites")
+        .select("id, variant_name, rarity")
+        .eq("is_active", true)
+        .order("variant_name");
+
+      const select = document.getElementById("sprite-select");
+
+      if (error || !data || data.length === 0) {
+        select.innerHTML = `<option value="">No hay Sprites en el catálogo todavía</option>`;
+        select.disabled = true;
+        document.getElementById("add-owned-btn").disabled = true;
+        document.getElementById("add-wanted-btn").disabled = true;
+        return;
+      }
+
+      allSprites = data;
+      select.innerHTML = data
+        .map(s => `<option value="${s.id}">${s.variant_name} (${s.rarity})</option>`)
+        .join("");
+    }
+
+    async function loadOwned() {
+      const grid = document.getElementById("owned-grid");
+      const { data, error } = await db
+        .from("user_sprites_owned")
+        .select("id, quantity, sprites(id, variant_name, rarity)")
+        .eq("user_id", currentUser.id);
+
+      if (error) {
+        renderEmpty(grid, "No se pudo cargar tu colección.");
+        return;
+      }
+      if (!data || data.length === 0) {
+        renderEmpty(grid, "Todavía no marcas ningún Sprite como propio.");
+        return;
+      }
+
+      grid.innerHTML = "";
+      data.forEach(row => {
+        const card = spriteCard(
+          { ...row.sprites, quantity: row.quantity },
+          {
+            showQuantity: true,
+            removable: true,
+            onRemove: async () => {
+              await db.from("user_sprites_owned").delete().eq("id", row.id);
+              loadOwned();
+            },
+          }
+        );
+        grid.appendChild(card);
+      });
+    }
+
+    async function loadWanted() {
+      const grid = document.getElementById("wanted-grid");
+      const { data, error } = await db
+        .from("user_sprites_wanted")
+        .select("id, sprites(id, variant_name, rarity)")
+        .eq("user_id", currentUser.id);
+
+      if (error) {
+        renderEmpty(grid, "No se pudo cargar tu lista de búsqueda.");
+        return;
+      }
+      if (!data || data.length === 0) {
+        renderEmpty(grid, "Todavía no marcas ningún Sprite como buscado.");
+        return;
+      }
+
+      grid.innerHTML = "";
+      data.forEach(row => {
+        const card = spriteCard(
+          row.sprites,
+          {
+            showQuantity: false,
+            removable: true,
+            onRemove: async () => {
+              await db.from("user_sprites_wanted").delete().eq("id", row.id);
+              loadWanted();
+            },
+          }
+        );
+        grid.appendChild(card);
+      });
+    }
+
+    document.querySelectorAll(".tab").forEach(tab => {
+      tab.addEventListener("click", () => {
+        document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+        tab.classList.add("active");
+        const isOwned = tab.dataset.tab === "owned";
+        document.getElementById("owned-section").style.display = isOwned ? "block" : "none";
+        document.getElementById("wanted-section").style.display = isOwned ? "none" : "block";
+      });
+    });
+
+    document.getElementById("add-owned-btn").addEventListener("click", async () => {
+      const spriteId = document.getElementById("sprite-select").value;
+      if (!spriteId) return;
+      const statusEl = document.getElementById("add-status");
+
+      const { error } = await db
+        .from("user_sprites_owned")
+        .upsert(
+          { user_id: currentUser.id, sprite_id: spriteId, quantity: 1 },
+          { onConflict: "user_id,sprite_id" }
+        );
+
+      statusEl.innerHTML = error
+        ? `<div class="status-message error">${error.message}</div>`
+        : `<div class="status-message success">Añadido a tu colección.</div>`;
+
+      loadOwned();
+    });
+
+    document.getElementById("add-wanted-btn").addEventListener("click", async () => {
+      const spriteId = document.getElementById("sprite-select").value;
+      if (!spriteId) return;
+      const statusEl = document.getElementById("add-status");
+
+      const { error } = await db
+        .from("user_sprites_wanted")
+        .upsert(
+          { user_id: currentUser.id, sprite_id: spriteId },
+          { onConflict: "user_id,sprite_id" }
+        );
+
+      statusEl.innerHTML = error
+        ? `<div class="status-message error">${error.message}</div>`
+        : `<div class="status-message success">Añadido a tu lista de búsqueda.</div>`;
+
+      loadWanted();
+    });
+
+    (async () => {
+      currentUser = await requireAuth();
+      if (!currentUser) return;
+
+      await renderNav("collection.html");
+      await loadCatalog();
+      await loadOwned();
+      await loadWanted();
+    })();
+  </script>
+</body>
+</html>
