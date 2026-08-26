@@ -2,19 +2,96 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>SpriteBase — Test de conexión</title>
-  <link rel="stylesheet" href="estilo.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SpriteBase — Entrar</title>
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div class="card">
-    <h1>SpriteBase</h1>
-    <p>Probando conexión con Supabase...</p>
-    <div id="status" class="status">Conectando...</div>
+  <div class="auth-wrapper">
+    <div class="auth-card">
+      <h1 class="auth-title" id="form-title">Bienvenido de nuevo</h1>
+      <p class="auth-subtitle" id="form-subtitle">Entra a tu cuenta de SpriteBase</p>
+
+      <div id="status-box"></div>
+
+      <form id="auth-form">
+        <div id="username-field" style="display:none;">
+          <label for="username">Username</label>
+          <input type="text" id="username" placeholder="Trixie" />
+        </div>
+
+        <label for="email">Email</label>
+        <input type="email" id="email" required placeholder="tucorreo@ejemplo.com" />
+
+        <label for="password">Contraseña</label>
+        <input type="password" id="password" required placeholder="••••••••" minlength="6" />
+
+        <button type="submit" class="btn btn-primary" id="submit-btn" style="width:100%; margin-top: 0.3rem;">
+          Entrar
+        </button>
+      </form>
+
+      <div class="auth-switch">
+        <span id="switch-text">¿No tienes cuenta?</span>
+        <button id="switch-btn">Crear una</button>
+      </div>
+    </div>
   </div>
 
-  <!-- Librería de Supabase vía CDN, sin necesidad de build tools -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabaseClient.js"></script>
-  <script src="main.js"></script>
+  <script src="auth.js"></script>
+  <script>
+    let mode = "login"; // o "signup"
+
+    const form = document.getElementById("auth-form");
+    const statusBox = document.getElementById("status-box");
+    const submitBtn = document.getElementById("submit-btn");
+
+    function setMode(newMode) {
+      mode = newMode;
+      const isSignup = mode === "signup";
+      document.getElementById("form-title").textContent =
+        isSignup ? "Crea tu cuenta" : "Bienvenido de nuevo";
+      document.getElementById("form-subtitle").textContent =
+        isSignup ? "Empieza a organizar tus trades" : "Entra a tu cuenta de SpriteBase";
+      document.getElementById("username-field").style.display = isSignup ? "block" : "none";
+      document.getElementById("username").required = isSignup;
+      submitBtn.textContent = isSignup ? "Crear cuenta" : "Entrar";
+      document.getElementById("switch-text").textContent =
+        isSignup ? "¿Ya tienes cuenta?" : "¿No tienes cuenta?";
+      document.getElementById("switch-btn").textContent =
+        isSignup ? "Entrar" : "Crear una";
+      statusBox.innerHTML = "";
+    }
+
+    document.getElementById("switch-btn").addEventListener("click", () => {
+      setMode(mode === "login" ? "signup" : "login");
+    });
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      submitBtn.disabled = true;
+      statusBox.innerHTML = "";
+
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
+      const username = document.getElementById("username").value.trim();
+
+      const result = mode === "signup"
+        ? await signUp(email, password, username)
+        : await signIn(email, password);
+
+      if (result.error) {
+        statusBox.innerHTML = `<div class="status-message error">${result.error.message}</div>`;
+        submitBtn.disabled = false;
+        return;
+      }
+
+      window.location.href = "dashboard.html";
+    });
+
+    redirectIfLoggedIn();
+  </script>
 </body>
 </html>
