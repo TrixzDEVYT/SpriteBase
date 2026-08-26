@@ -28,6 +28,10 @@ async function renderNav(activePage) {
     { href: "trades.html", label: "Trades" },
   ];
 
+  if (await checkIsAdmin(session.user.id)) {
+    links.push({ href: "admin.html", label: "Admin" });
+  }
+
   const linksHtml = links.map(l =>
     `<a href="${l.href}" class="${activePage === l.href ? 'active' : ''}">${l.label}</a>`
   ).join("");
@@ -73,22 +77,47 @@ async function redirectIfLoggedIn() {
 }
 
 async function signUp(email, password, username) {
-  const { data, error } = await db.auth.signUp({ email, password });
-  if (error) return { error };
-
-  // Crea el perfil público asociado (requiere que el usuario quede
-  // autenticado tras el signUp; en proyectos con confirmación de email
-  // activada, esto se hace después de confirmar).
-  if (data.user) {
-    const { error: profileError } = await db
-      .from("profiles")
-      .insert({ id: data.user.id, username });
-    if (profileError) return { error: profileError };
-  }
-
-  return { data };
+  // El username se manda como metadata; el trigger handle_new_user()
+  // en la base de datos crea la fila en profiles automáticamente,
+  // sin depender de que haya sesión activa en este momento.
+  const { data, error } = await db.auth.signUp({
+    email,
+    password,
+    options: { data: { username } },
+  });
+  return { data, error };
 }
 
 async function signIn(email, password) {
   return await db.auth.signInWithPassword({ email, password });
+}
+
+/**
+ * Verifica si el usuario dado tiene rol admin, consultando user_roles.
+ * La policy de select permite: auth.uid() = user_id OR is_admin(),
+ * así que un usuario normal SÍ puede leer su propia fila.
+ */
+async function checkIsAdmin(userId) {
+  const { data } = await db
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId)
+    .maybeSingle();
+  return data?.role === "admin";
+}
+
+/**
+ * Protege admin.html: exige sesión Y rol admin. Si no es admin,
+ * lo regresa al dashboard.
+ */
+async function requireAdmin() {
+  const user = await requireAuth();
+  if (!user) return null;
+
+  const isAdmin = await checkIsAdmin(user.id);
+  if (!isAdmin) {
+    window.location.href = "dashboard.html";
+    return null;
+  }
+  return user;
 }
