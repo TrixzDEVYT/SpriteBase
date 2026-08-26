@@ -23,6 +23,7 @@
         </select>
         <button class="btn btn-primary" id="add-owned-btn">+ Lo tengo</button>
         <button class="btn btn-ghost" id="add-wanted-btn">+ Lo busco</button>
+        <button class="btn btn-ghost" id="refresh-catalog-btn" title="Actualizar catálogo">↻</button>
       </div>
       <div id="add-status"></div>
     </div>
@@ -220,6 +221,8 @@
       await loadCatalog();
       await loadOwned();
       await loadWanted();
+
+      document.getElementById("refresh-catalog-btn").addEventListener("click", loadCatalog);
     })();
   </script>
 </body>

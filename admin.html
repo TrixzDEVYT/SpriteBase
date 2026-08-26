@@ -80,6 +80,10 @@
         </div>
       </div>
 
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top: 1.2rem;">
+        <h3 style="margin:0;">Catálogo de series</h3>
+        <button class="btn btn-ghost" id="series-refresh-btn">↻ Actualizar</button>
+      </div>
       <table class="admin-table" id="series-table">
         <thead>
           <tr>
@@ -95,51 +99,69 @@
 
     <!-- =================== SPRITES =================== -->
     <div id="sprites-section" style="display:none;">
-      <div class="card">
-        <h3 style="margin-bottom: 1rem;" id="sprite-form-title">Nuevo Sprite</h3>
-        <input type="hidden" id="sprite-id" />
-        <div class="form-grid">
-          <div>
-            <label for="sprite-series">Serie</label>
-            <select id="sprite-series"></select>
+      <div class="card" style="display:flex; gap:1.5rem; align-items:flex-start; flex-wrap: wrap;">
+        <div style="flex: 2; min-width: 280px;">
+          <h3 style="margin-bottom: 1rem;" id="sprite-form-title">Nuevo Sprite</h3>
+          <input type="hidden" id="sprite-id" />
+          <div class="form-grid">
+            <div>
+              <label for="sprite-series">Serie</label>
+              <select id="sprite-series"></select>
+            </div>
+            <div>
+              <label for="sprite-rarity">Rareza</label>
+              <select id="sprite-rarity">
+                <option value="common">common</option>
+                <option value="raro">raro</option>
+                <option value="epico">epico</option>
+                <option value="legendario">legendario</option>
+                <option value="mitico">mitico</option>
+              </select>
+            </div>
+            <div>
+              <label for="sprite-variant">Nombre de variante</label>
+              <input type="text" id="sprite-variant" placeholder="Cube" />
+            </div>
+            <div>
+              <label for="sprite-slug">Slug</label>
+              <input type="text" id="sprite-slug" placeholder="gustambo-cube" />
+            </div>
+            <div class="form-full">
+              <label for="sprite-image">URL de imagen (Supabase Storage)</label>
+              <input type="text" id="sprite-image" placeholder="https://..." />
+            </div>
+            <div class="form-full">
+              <label for="sprite-description">Descripción (opcional)</label>
+              <textarea id="sprite-description"></textarea>
+            </div>
           </div>
-          <div>
-            <label for="sprite-rarity">Rareza</label>
-            <select id="sprite-rarity">
-              <option value="common">common</option>
-              <option value="rare">rare</option>
-              <option value="epic">epic</option>
-              <option value="legendary">legendary</option>
-              <option value="mythic">mythic</option>
-            </select>
-          </div>
-          <div>
-            <label for="sprite-variant">Nombre de variante</label>
-            <input type="text" id="sprite-variant" placeholder="Cube" />
-          </div>
-          <div>
-            <label for="sprite-slug">Slug</label>
-            <input type="text" id="sprite-slug" placeholder="gustambo-cube" />
-          </div>
-          <div class="form-full">
-            <label for="sprite-image">URL de imagen (Supabase Storage)</label>
-            <input type="text" id="sprite-image" placeholder="https://..." />
-          </div>
-          <div class="form-full">
-            <label for="sprite-description">Descripción (opcional)</label>
-            <textarea id="sprite-description"></textarea>
+          <div id="sprite-status"></div>
+          <div style="display:flex; gap:0.6rem;">
+            <button class="btn btn-primary" id="sprite-save-btn">Guardar Sprite</button>
+            <button class="btn btn-ghost" id="sprite-cancel-btn" style="display:none;">Cancelar edición</button>
           </div>
         </div>
-        <div id="sprite-status"></div>
-        <div style="display:flex; gap:0.6rem;">
-          <button class="btn btn-primary" id="sprite-save-btn">Guardar Sprite</button>
-          <button class="btn btn-ghost" id="sprite-cancel-btn" style="display:none;">Cancelar edición</button>
+
+        <div style="flex: 1; min-width: 180px;">
+          <label style="margin-bottom: 0.5rem;">Vista previa</label>
+          <div class="sprite-card rarity-common" id="sprite-preview-card" style="max-width: 200px;">
+            <span class="badge badge-common" id="preview-badge">common</span>
+            <div id="preview-image-wrap" style="margin-top:0.6rem; display:none;">
+              <img id="preview-image" src="" style="width:100%; border-radius:8px; display:block;" onerror="this.parentElement.style.display='none'" />
+            </div>
+            <div class="sprite-card-name" id="preview-name">Nombre del sprite</div>
+          </div>
         </div>
       </div>
 
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top: 1.2rem;">
+        <h3 style="margin:0;">Catálogo</h3>
+        <button class="btn btn-ghost" id="sprites-refresh-btn">↻ Actualizar</button>
+      </div>
       <table class="admin-table" id="sprites-table">
         <thead>
           <tr>
+            <th>Imagen</th>
             <th>Variante</th>
             <th>Serie</th>
             <th>Rareza</th>
@@ -190,6 +212,36 @@
     document.getElementById("sprite-slug").addEventListener("input", (e) => {
       e.target.dataset.touched = "true";
     });
+
+    // ---------------- Vista previa en vivo ----------------
+    function updateSpritePreview() {
+      const name = document.getElementById("sprite-variant").value.trim() || "Nombre del sprite";
+      const rarity = document.getElementById("sprite-rarity").value;
+      const imageUrl = document.getElementById("sprite-image").value.trim();
+
+      const card = document.getElementById("sprite-preview-card");
+      card.className = `sprite-card rarity-${rarity}`;
+
+      const badge = document.getElementById("preview-badge");
+      badge.className = `badge badge-${rarity}`;
+      badge.textContent = rarity;
+
+      document.getElementById("preview-name").textContent = name;
+
+      const imgWrap = document.getElementById("preview-image-wrap");
+      const img = document.getElementById("preview-image");
+      if (imageUrl) {
+        img.src = imageUrl;
+        imgWrap.style.display = "block";
+      } else {
+        imgWrap.style.display = "none";
+      }
+    }
+
+    ["sprite-variant", "sprite-rarity", "sprite-image"].forEach(id => {
+      document.getElementById(id).addEventListener("input", updateSpritePreview);
+    });
+    document.getElementById("sprite-rarity").addEventListener("change", updateSpritePreview);
 
     // ---------------- Tabs ----------------
     document.querySelectorAll(".tab").forEach(tab => {
@@ -315,17 +367,22 @@
       const tbody = document.getElementById("sprites-tbody");
 
       if (error) {
-        tbody.innerHTML = `<tr><td colspan="5">Error: ${error.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6">Error: ${error.message}</td></tr>`;
         return;
       }
 
       if (!data || data.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" style="color:var(--text-muted);">Sin Sprites todavía.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" style="color:var(--text-muted);">Sin Sprites todavía.</td></tr>`;
         return;
       }
 
       tbody.innerHTML = data.map(s => `
         <tr>
+          <td>
+            ${s.image_url
+              ? `<img src="${s.image_url}" style="width:40px; height:40px; object-fit:cover; border-radius:6px;" onerror="this.style.display='none'" />`
+              : `<span style="color:var(--text-muted); font-size:0.8rem;">sin imagen</span>`}
+          </td>
           <td>${s.variant_name}</td>
           <td>${s.sprite_series?.name || "—"}</td>
           <td><span class="badge badge-${s.rarity}">${s.rarity}</span></td>
@@ -353,6 +410,7 @@
       document.getElementById("sprite-description").value = s.description || "";
       document.getElementById("sprite-form-title").textContent = "Editar Sprite";
       document.getElementById("sprite-cancel-btn").style.display = "inline-flex";
+      updateSpritePreview();
     };
 
     function resetSpriteForm() {
@@ -411,6 +469,9 @@
       await db.from("sprites").update({ is_active: !current }).eq("id", id);
       loadSprites();
     };
+
+    document.getElementById("series-refresh-btn").addEventListener("click", loadSeries);
+    document.getElementById("sprites-refresh-btn").addEventListener("click", loadSprites);
 
     (async () => {
       const user = await requireAdmin();
