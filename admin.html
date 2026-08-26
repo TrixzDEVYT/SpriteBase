@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SpriteBase — Admin Panel</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .admin-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+    }
+    .admin-table th {
+      text-align: left;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-muted);
+      padding: 0.5rem 0.6rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .admin-table td {
+      padding: 0.6rem;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.9rem;
+    }
+    .admin-table tr:last-child td { border-bottom: none; }
+    .inline-actions { display: flex; gap: 0.4rem; }
+    .inline-actions button {
+      padding: 0.3rem 0.7rem;
+      font-size: 0.8rem;
+    }
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0 1rem;
+    }
+    .form-grid > div { grid-column: span 1; }
+    .form-full { grid-column: span 2 !important; }
+  </style>
+</head>
+<body>
+  <div id="site-header"></div>
+
+  <div class="page">
+    <div class="page-header">
+      <h1>Admin Panel</h1>
+      <p>Gestiona familias y variantes de Sprites. Solo visible para administradores.</p>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="series">Sprite Series</button>
+      <button class="tab" data-tab="sprites">Sprites</button>
+    </div>
+
+    <!-- =================== SERIES =================== -->
+    <div id="series-section">
+      <div class="card">
+        <h3 style="margin-bottom: 1rem;" id="series-form-title">Nueva serie</h3>
+        <input type="hidden" id="series-id" />
+        <div class="form-grid">
+          <div>
+            <label for="series-name">Nombre</label>
+            <input type="text" id="series-name" placeholder="Gustambo" />
+          </div>
+          <div>
+            <label for="series-slug">Slug</label>
+            <input type="text" id="series-slug" placeholder="gustambo" />
+          </div>
+          <div class="form-full">
+            <label for="series-description">Descripción (opcional)</label>
+            <textarea id="series-description" placeholder="Descripción de la familia..."></textarea>
+          </div>
+        </div>
+        <div id="series-status"></div>
+        <div style="display:flex; gap:0.6rem;">
+          <button class="btn btn-primary" id="series-save-btn">Guardar serie</button>
+          <button class="btn btn-ghost" id="series-cancel-btn" style="display:none;">Cancelar edición</button>
+        </div>
+      </div>
+
+      <table class="admin-table" id="series-table">
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Slug</th>
+            <th>Activa</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="series-tbody"></tbody>
+      </table>
+    </div>
+
+    <!-- =================== SPRITES =================== -->
+    <div id="sprites-section" style="display:none;">
+      <div class="card">
+        <h3 style="margin-bottom: 1rem;" id="sprite-form-title">Nuevo Sprite</h3>
+        <input type="hidden" id="sprite-id" />
+        <div class="form-grid">
+          <div>
+            <label for="sprite-series">Serie</label>
+            <select id="sprite-series"></select>
+          </div>
+          <div>
+            <label for="sprite-rarity">Rareza</label>
+            <select id="sprite-rarity">
+              <option value="common">common</option>
+              <option value="rare">rare</option>
+              <option value="epic">epic</option>
+              <option value="legendary">legendary</option>
+              <option value="mythic">mythic</option>
+            </select>
+          </div>
+          <div>
+            <label for="sprite-variant">Nombre de variante</label>
+            <input type="text" id="sprite-variant" placeholder="Cube" />
+          </div>
+          <div>
+            <label for="sprite-slug">Slug</label>
+            <input type="text" id="sprite-slug" placeholder="gustambo-cube" />
+          </div>
+          <div class="form-full">
+            <label for="sprite-image">URL de imagen (Supabase Storage)</label>
+            <input type="text" id="sprite-image" placeholder="https://..." />
+          </div>
+          <div class="form-full">
+            <label for="sprite-description">Descripción (opcional)</label>
+            <textarea id="sprite-description"></textarea>
+          </div>
+        </div>
+        <div id="sprite-status"></div>
+        <div style="display:flex; gap:0.6rem;">
+          <button class="btn btn-primary" id="sprite-save-btn">Guardar Sprite</button>
+          <button class="btn btn-ghost" id="sprite-cancel-btn" style="display:none;">Cancelar edición</button>
+        </div>
+      </div>
+
+      <table class="admin-table" id="sprites-table">
+        <thead>
+          <tr>
+            <th>Variante</th>
+            <th>Serie</th>
+            <th>Rareza</th>
+            <th>Activo</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="sprites-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabaseClient.js"></script>
+  <script src="auth.js"></script>
+  <script>
+    let allSeries = [];
+
+    function slugify(text) {
+      return text
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9\s-]/g, "")
+        .replace(/\s+/g, "-")
+        .replace(/-+/g, "-");
+    }
+
+    // Auto-generar slug mientras se escribe el nombre (solo si el campo slug está vacío)
+    document.getElementById("series-name").addEventListener("input", (e) => {
+      const slugField = document.getElementById("series-slug");
+      if (!slugField.dataset.touched) slugField.value = slugify(e.target.value);
+    });
+    document.getElementById("series-slug").addEventListener("input", (e) => {
+      e.target.dataset.touched = "true";
+    });
+
+    document.getElementById("sprite-variant").addEventListener("input", (e) => {
+      const slugField = document.getElementById("sprite-slug");
+      const seriesSelect = document.getElementById("sprite-series");
+      const seriesOpt = seriesSelect.options[seriesSelect.selectedIndex];
+      const seriesSlug = seriesOpt ? seriesOpt.dataset.slug : "";
+      if (!slugField.dataset.touched) {
+        slugField.value = seriesSlug
+          ? `${seriesSlug}-${slugify(e.target.value)}`
+          : slugify(e.target.value);
+      }
+    });
+    document.getElementById("sprite-slug").addEventListener("input", (e) => {
+      e.target.dataset.touched = "true";
+    });
+
+    // ---------------- Tabs ----------------
+    document.querySelectorAll(".tab").forEach(tab => {
+      tab.addEventListener("click", () => {
+        document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+        tab.classList.add("active");
+        const isSeries = tab.dataset.tab === "series";
+        document.getElementById("series-section").style.display = isSeries ? "block" : "none";
+        document.getElementById("sprites-section").style.display = isSeries ? "none" : "block";
+      });
+    });
+
+    // ---------------- Series: cargar tabla ----------------
+    async function loadSeries() {
+      const { data, error } = await db
+        .from("sprite_series")
+        .select("*")
+        .order("name");
+
+      const tbody = document.getElementById("series-tbody");
+
+      if (error) {
+        tbody.innerHTML = `<tr><td colspan="4">Error: ${error.message}</td></tr>`;
+        return;
+      }
+
+      allSeries = data || [];
+      populateSeriesSelect();
+
+      if (allSeries.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" style="color:var(--text-muted);">Sin series todavía. Crea la primera arriba.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = allSeries.map(s => `
+        <tr>
+          <td>${s.name}</td>
+          <td>${s.slug}</td>
+          <td>${s.is_active ? "✅" : "—"}</td>
+          <td>
+            <div class="inline-actions">
+              <button class="btn btn-ghost" onclick="editSeries('${s.id}')">Editar</button>
+              <button class="btn btn-ghost" onclick="toggleSeriesActive('${s.id}', ${s.is_active})">
+                ${s.is_active ? "Desactivar" : "Activar"}
+              </button>
+            </div>
+          </td>
+        </tr>
+      `).join("");
+    }
+
+    function populateSeriesSelect() {
+      const select = document.getElementById("sprite-series");
+      select.innerHTML = allSeries
+        .map(s => `<option value="${s.id}" data-slug="${s.slug}">${s.name}</option>`)
+        .join("");
+    }
+
+    function editSeries(id) {
+      const s = allSeries.find(x => x.id === id);
+      if (!s) return;
+      document.getElementById("series-id").value = s.id;
+      document.getElementById("series-name").value = s.name;
+      document.getElementById("series-slug").value = s.slug;
+      document.getElementById("series-slug").dataset.touched = "true";
+      document.getElementById("series-description").value = s.description || "";
+      document.getElementById("series-form-title").textContent = "Editar serie";
+      document.getElementById("series-cancel-btn").style.display = "inline-flex";
+    }
+
+    function resetSeriesForm() {
+      document.getElementById("series-id").value = "";
+      document.getElementById("series-name").value = "";
+      document.getElementById("series-slug").value = "";
+      document.getElementById("series-slug").dataset.touched = "";
+      document.getElementById("series-description").value = "";
+      document.getElementById("series-form-title").textContent = "Nueva serie";
+      document.getElementById("series-cancel-btn").style.display = "none";
+    }
+
+    document.getElementById("series-cancel-btn").addEventListener("click", resetSeriesForm);
+
+    document.getElementById("series-save-btn").addEventListener("click", async () => {
+      const statusEl = document.getElementById("series-status");
+      const id = document.getElementById("series-id").value;
+      const name = document.getElementById("series-name").value.trim();
+      const slug = document.getElementById("series-slug").value.trim();
+      const description = document.getElementById("series-description").value.trim();
+
+      if (name.length < 2 || !slug) {
+        statusEl.innerHTML = `<div class="status-message error">Nombre y slug son obligatorios.</div>`;
+        return;
+      }
+
+      const payload = { name, slug, description: description || null };
+      const { error } = id
+        ? await db.from("sprite_series").update(payload).eq("id", id)
+        : await db.from("sprite_series").insert(payload);
+
+      if (error) {
+        statusEl.innerHTML = `<div class="status-message error">${error.message}</div>`;
+        return;
+      }
+
+      statusEl.innerHTML = `<div class="status-message success">Guardado.</div>`;
+      resetSeriesForm();
+      loadSeries();
+    });
+
+    window.toggleSeriesActive = async (id, current) => {
+      await db.from("sprite_series").update({ is_active: !current }).eq("id", id);
+      loadSeries();
+    };
+    window.editSeries = editSeries;
+
+    // ---------------- Sprites: cargar tabla ----------------
+    async function loadSprites() {
+      const { data, error } = await db
+        .from("sprites")
+        .select("*, sprite_series(name)")
+        .order("variant_name");
+
+      const tbody = document.getElementById("sprites-tbody");
+
+      if (error) {
+        tbody.innerHTML = `<tr><td colspan="5">Error: ${error.message}</td></tr>`;
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="color:var(--text-muted);">Sin Sprites todavía.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = data.map(s => `
+        <tr>
+          <td>${s.variant_name}</td>
+          <td>${s.sprite_series?.name || "—"}</td>
+          <td><span class="badge badge-${s.rarity}">${s.rarity}</span></td>
+          <td>${s.is_active ? "✅" : "—"}</td>
+          <td>
+            <div class="inline-actions">
+              <button class="btn btn-ghost" onclick='editSprite(${JSON.stringify(s).replace(/'/g, "&apos;")})'>Editar</button>
+              <button class="btn btn-ghost" onclick="toggleSpriteActive('${s.id}', ${s.is_active})">
+                ${s.is_active ? "Desactivar" : "Activar"}
+              </button>
+            </div>
+          </td>
+        </tr>
+      `).join("");
+    }
+
+    window.editSprite = (s) => {
+      document.getElementById("sprite-id").value = s.id;
+      document.getElementById("sprite-series").value = s.series_id;
+      document.getElementById("sprite-rarity").value = s.rarity;
+      document.getElementById("sprite-variant").value = s.variant_name;
+      document.getElementById("sprite-slug").value = s.slug;
+      document.getElementById("sprite-slug").dataset.touched = "true";
+      document.getElementById("sprite-image").value = s.image_url || "";
+      document.getElementById("sprite-description").value = s.description || "";
+      document.getElementById("sprite-form-title").textContent = "Editar Sprite";
+      document.getElementById("sprite-cancel-btn").style.display = "inline-flex";
+    };
+
+    function resetSpriteForm() {
+      document.getElementById("sprite-id").value = "";
+      document.getElementById("sprite-variant").value = "";
+      document.getElementById("sprite-slug").value = "";
+      document.getElementById("sprite-slug").dataset.touched = "";
+      document.getElementById("sprite-image").value = "";
+      document.getElementById("sprite-description").value = "";
+      document.getElementById("sprite-form-title").textContent = "Nuevo Sprite";
+      document.getElementById("sprite-cancel-btn").style.display = "none";
+    }
+
+    document.getElementById("sprite-cancel-btn").addEventListener("click", resetSpriteForm);
+
+    document.getElementById("sprite-save-btn").addEventListener("click", async () => {
+      const statusEl = document.getElementById("sprite-status");
+      const id = document.getElementById("sprite-id").value;
+      const series_id = document.getElementById("sprite-series").value;
+      const rarity = document.getElementById("sprite-rarity").value;
+      const variant_name = document.getElementById("sprite-variant").value.trim();
+      const slug = document.getElementById("sprite-slug").value.trim();
+      const image_url = document.getElementById("sprite-image").value.trim();
+      const description = document.getElementById("sprite-description").value.trim();
+
+      if (!series_id) {
+        statusEl.innerHTML = `<div class="status-message error">Crea al menos una serie primero.</div>`;
+        return;
+      }
+      if (!variant_name || !slug) {
+        statusEl.innerHTML = `<div class="status-message error">Nombre de variante y slug son obligatorios.</div>`;
+        return;
+      }
+
+      const payload = {
+        series_id, rarity, variant_name, slug,
+        image_url: image_url || null,
+        description: description || null,
+      };
+
+      const { error } = id
+        ? await db.from("sprites").update(payload).eq("id", id)
+        : await db.from("sprites").insert(payload);
+
+      if (error) {
+        statusEl.innerHTML = `<div class="status-message error">${error.message}</div>`;
+        return;
+      }
+
+      statusEl.innerHTML = `<div class="status-message success">Guardado.</div>`;
+      resetSpriteForm();
+      loadSprites();
+    });
+
+    window.toggleSpriteActive = async (id, current) => {
+      await db.from("sprites").update({ is_active: !current }).eq("id", id);
+      loadSprites();
+    };
+
+    (async () => {
+      const user = await requireAdmin();
+      if (!user) return;
+
+      await renderNav("admin.html");
+      await loadSeries();
+      await loadSprites();
+    })();
+  </script>
+</body>
+</html>
