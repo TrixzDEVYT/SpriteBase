@@ -1,5 +1,11 @@
 # SpriteBase 🔮
 
+> ⚠️ **Disclaimer**
+> SpriteBase is an independent, community-created project and is **not affiliated with, endorsed by, sponsored by, or associated with Epic Games or Fortnite**. Fortnite and related assets, names, and trademarks belong to their respective owners.
+>
+> **Please do not use SpriteBase, its design, branding, layout, text, or other original content as a template for your own website or project without asking for permission first.** Inspiration is always welcome, but direct reuse or replication requires prior permission from the SpriteBase team.
+
+
 🌐 **SpriteBase** is a community-driven, multilingual platform built for Fortnite Sprite collectors and traders around the world. Whether you're just starting your collection or you're hunting down those last few missing Sprites, SpriteBase gives you a dedicated place to organize, discover, and trade.
 
 📦 **Manage your collection**
