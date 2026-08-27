@@ -12,36 +12,191 @@
       padding: 0.15rem 0.55rem;
       border-radius: 999px;
       text-transform: uppercase;
+      white-space: nowrap;
     }
     .trade-status-active { background: rgba(74,222,128,0.15); color: var(--success); }
     .trade-status-cancelled { background: rgba(156,163,175,0.15); color: var(--text-muted); }
     .trade-status-completed { background: rgba(77,166,255,0.15); color: var(--rarity-rare); }
     .trade-status-expired { background: rgba(255,107,107,0.15); color: var(--error); }
+
+    .top-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .top-header-actions { display: flex; gap: 0.6rem; }
+
+    .browse-toolbar {
+      display: flex;
+      gap: 0.6rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+    .browse-toolbar input[type="text"] { margin-bottom: 0; flex: 1; min-width: 200px; }
+    .browse-toolbar select { margin-bottom: 0; width: auto; }
+    .view-toggle { display: flex; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+    .view-toggle button {
+      background: var(--surface);
+      border: none;
+      color: var(--text-muted);
+      padding: 0.65rem 0.8rem;
+      cursor: pointer;
+    }
+    .view-toggle button.active { background: var(--accent); color: white; }
+
+    .browse-layout {
+      display: grid;
+      grid-template-columns: 240px 1fr;
+      gap: 1.5rem;
+      align-items: start;
+    }
+    @media (max-width: 800px) {
+      .browse-layout { grid-template-columns: 1fr; }
+    }
+
+    .filters-panel label { margin-top: 1rem; }
+    .filters-panel label:first-child { margin-top: 0; }
+    .filters-header { display: flex; justify-content: space-between; align-items: center; }
+    .filters-header button {
+      background: none; border: none; color: var(--accent);
+      font-size: 0.85rem; cursor: pointer; font-family: var(--font-body);
+    }
+    .sprite-filter-list { max-height: 200px; overflow-y: auto; margin-top: 0.5rem; }
+    .sprite-filter-item {
+      display: flex; align-items: center; gap: 0.5rem;
+      padding: 0.35rem 0; font-size: 0.85rem;
+    }
+    .sprite-filter-item input { width: auto; margin: 0; }
+
+    .cards-area.grid-view { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
+    .cards-area.list-view { display: flex; flex-direction: column; gap: 1rem; }
+
+    .trade-owner { display: flex; align-items: center; gap: 0.6rem; }
+    .avatar-circle {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: var(--accent);
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-display); font-size: 1rem; color: white;
+      flex-shrink: 0; overflow: hidden;
+    }
+    .avatar-circle img { width: 100%; height: 100%; object-fit: cover; }
+
+    .match-badge {
+      font-size: 0.7rem; font-weight: 600; padding: 0.15rem 0.5rem;
+      border-radius: 999px; background: rgba(139,92,246,0.18); color: var(--accent);
+    }
+
+    .chip-row { display: flex; gap: 0.4rem; overflow-x: auto; padding-bottom: 0.3rem; }
+    .chip-row .chip { flex-shrink: 0; }
+
+    .details-panel {
+      display: none;
+      border-top: 1px solid var(--border);
+      margin-top: 0.6rem;
+      padding-top: 0.8rem;
+      font-size: 0.88rem;
+      color: var(--text-muted);
+    }
+
+    .pagination { display: flex; justify-content: center; gap: 0.4rem; margin-top: 2rem; }
+    .pagination button {
+      background: var(--surface); border: 1px solid var(--border); color: var(--text);
+      padding: 0.4rem 0.75rem; border-radius: 8px; cursor: pointer; font-family: var(--font-body);
+    }
+    .pagination button.active { background: var(--accent); border-color: var(--accent); color: white; }
+    .pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
   </style>
 </head>
 <body>
   <div id="site-header"></div>
 
   <div class="page">
-    <div class="page-header">
-      <h1>Trades</h1>
-      <p>Browse active offers or manage your own.</p>
+    <div class="top-header">
+      <div>
+        <h1>Trades</h1>
+        <p>Browse active offers or manage your own.</p>
+      </div>
+      <div class="top-header-actions">
+        <button class="btn btn-ghost" id="top-manage-btn">✎ Manage Trades</button>
+        <button class="btn btn-primary" id="top-create-btn">+ Create Trade</button>
+      </div>
     </div>
 
     <div class="tabs">
       <button class="tab active" data-tab="browse">Browse</button>
       <button class="tab" data-tab="mine">My Trades</button>
-      <button class="tab" data-tab="create">Create Trade</button>
     </div>
 
+    <!-- =================== BROWSE =================== -->
     <div id="browse-section">
-      <div id="trades-list" style="display:flex; flex-direction:column; gap: 1rem;"></div>
+      <div class="browse-toolbar">
+        <input type="text" id="search-input" placeholder="Search trades, players, or sprites..." />
+        <select id="sort-select">
+          <option value="newest">Newest first</option>
+          <option value="oldest">Oldest first</option>
+        </select>
+        <div class="view-toggle">
+          <button id="grid-view-btn" class="active" title="Grid view">▦</button>
+          <button id="list-view-btn" title="List view">☰</button>
+        </div>
+      </div>
+
+      <div class="browse-layout">
+        <div class="card filters-panel">
+          <div class="filters-header">
+            <h3 style="margin:0; font-size:1rem;">Filters</h3>
+            <button id="clear-filters-btn">Clear</button>
+          </div>
+
+          <label for="filter-status">Status</label>
+          <select id="filter-status">
+            <option value="any">Any</option>
+            <option value="active" selected>Active</option>
+            <option value="completed">Completed</option>
+            <option value="cancelled">Paused</option>
+            <option value="expired">Expired</option>
+          </select>
+
+          <label for="filter-match">Match</label>
+          <select id="filter-match">
+            <option value="any">Any</option>
+            <option value="full">Full match</option>
+            <option value="partial">Partial match</option>
+          </select>
+
+          <label for="filter-rarity">Rarity</label>
+          <select id="filter-rarity">
+            <option value="any">Any</option>
+            <option value="common">Common</option>
+            <option value="raro">Rare</option>
+            <option value="epico">Epic</option>
+            <option value="legendario">Legendary</option>
+            <option value="mitico">Mythic</option>
+          </select>
+
+          <label for="sprite-filter-search">Sprites</label>
+          <input type="text" id="sprite-filter-search" placeholder="Search sprite..." />
+          <div class="sprite-filter-list" id="sprite-filter-list"></div>
+
+          <button class="btn btn-primary" id="apply-filters-btn" style="width:100%; margin-top:1.2rem;">Apply Filters</button>
+        </div>
+
+        <div>
+          <div id="cards-area" class="cards-area grid-view"></div>
+          <div id="pagination" class="pagination"></div>
+        </div>
+      </div>
     </div>
 
+    <!-- =================== MY TRADES =================== -->
     <div id="mine-section" style="display:none;">
       <div id="mine-list" style="display:flex; flex-direction:column; gap: 1rem;"></div>
     </div>
 
+    <!-- =================== CREATE =================== -->
     <div id="create-section" style="display:none;">
       <div class="card">
         <label for="trade-title">Title</label>
@@ -64,22 +219,39 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabaseClient.js"></script>
+  <script src="profanityFilter.js"></script>
   <script src="auth.js"></script>
   <script>
     let currentUser = null;
+    let allTrades = [];       // datos crudos ya cargados de Supabase
+    let matchMap = {};        // { ownerUserId: 'full' | 'partial' }
+    let allSpritesCatalog = [];
+    let selectedSpriteFilterIds = new Set();
+    let appliedFilters = { status: "active", match: "any", rarity: "any", spriteIds: new Set() };
+    let viewMode = "grid";
+    let currentPage = 1;
+    const PAGE_SIZE = 6;
 
-    document.querySelectorAll(".tab").forEach(tab => {
-      tab.addEventListener("click", () => {
-        document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
-        tab.classList.add("active");
-        const section = tab.dataset.tab;
-        document.getElementById("browse-section").style.display = section === "browse" ? "block" : "none";
-        document.getElementById("mine-section").style.display = section === "mine" ? "block" : "none";
-        document.getElementById("create-section").style.display = section === "create" ? "block" : "none";
-        if (section === "create") loadUserSpritesForForm();
-        if (section === "mine") loadMyTrades();
-      });
-    });
+    const RARITY_LABELS = {
+      common: "Common", raro: "Rare", epico: "Epic",
+      legendario: "Legendary", mitico: "Mythic",
+    };
+
+    function timeAgo(dateStr) {
+      const diffSec = (Date.now() - new Date(dateStr).getTime()) / 1000;
+      if (diffSec < 60) return "just now";
+      if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
+      if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`;
+      return `${Math.floor(diffSec / 86400)}d ago`;
+    }
+
+    function avatarHtml(profile) {
+      const initial = (profile?.username || "?").trim().charAt(0).toUpperCase();
+      if (profile?.avatar_url) {
+        return `<div class="avatar-circle"><img src="${profile.avatar_url}" onerror="this.parentElement.innerHTML='${initial}'" /></div>`;
+      }
+      return `<div class="avatar-circle">${initial}</div>`;
+    }
 
     function chip(sprite) {
       const thumb = sprite.image_url
@@ -88,58 +260,281 @@
       return `<span class="chip">${thumb}${sprite.variant_name}</span>`;
     }
 
+    // ---------------- Navegación entre vistas ----------------
+    function showView(view) {
+      document.getElementById("browse-section").style.display = view === "browse" ? "block" : "none";
+      document.getElementById("mine-section").style.display = view === "mine" ? "block" : "none";
+      document.getElementById("create-section").style.display = view === "create" ? "block" : "none";
+
+      document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+      if (view === "browse") document.querySelector('.tab[data-tab="browse"]').classList.add("active");
+      if (view === "mine") document.querySelector('.tab[data-tab="mine"]').classList.add("active");
+
+      if (view === "create") loadUserSpritesForForm();
+      if (view === "mine") loadMyTrades();
+    }
+
+    document.querySelectorAll(".tab").forEach(tab => {
+      tab.addEventListener("click", () => showView(tab.dataset.tab));
+    });
+    document.getElementById("top-manage-btn").addEventListener("click", () => showView("mine"));
+    document.getElementById("top-create-btn").addEventListener("click", () => showView("create"));
+
+    // ---------------- Cargar datos base ----------------
+    async function loadMatchMap() {
+      const { data } = await db
+        .from("user_trade_matches")
+        .select("*")
+        .or(`user_a.eq.${currentUser.id},user_b.eq.${currentUser.id}`);
+
+      matchMap = {};
+      (data || []).forEach(row => {
+        const otherId = row.user_a === currentUser.id ? row.user_b : row.user_a;
+        // Si ya hay un match 'full' registrado, no lo degradamos a 'partial'.
+        if (matchMap[otherId] !== "full") matchMap[otherId] = row.match_type;
+      });
+    }
+
+    async function loadSpriteCatalogForFilter() {
+      const { data } = await db
+        .from("sprites")
+        .select("id, variant_name, rarity, image_url")
+        .eq("is_active", true)
+        .order("variant_name");
+      allSpritesCatalog = data || [];
+      renderSpriteFilterList("");
+    }
+
+    function renderSpriteFilterList(term) {
+      const list = document.getElementById("sprite-filter-list");
+      const filtered = allSpritesCatalog.filter(s =>
+        s.variant_name.toLowerCase().includes(term.toLowerCase())
+      ).slice(0, 40);
+
+      list.innerHTML = filtered.map(s => `
+        <label class="sprite-filter-item">
+          <input type="checkbox" value="${s.id}" class="sprite-filter-check" ${selectedSpriteFilterIds.has(s.id) ? "checked" : ""} />
+          ${s.variant_name}
+        </label>
+      `).join("") || `<p style="color:var(--text-muted); font-size:0.85rem;">No matches.</p>`;
+
+      list.querySelectorAll(".sprite-filter-check").forEach(cb => {
+        cb.addEventListener("change", () => {
+          if (cb.checked) selectedSpriteFilterIds.add(cb.value);
+          else selectedSpriteFilterIds.delete(cb.value);
+        });
+      });
+    }
+
+    document.getElementById("sprite-filter-search").addEventListener("input", (e) => {
+      renderSpriteFilterList(e.target.value);
+    });
+
     async function loadTrades() {
-      const list = document.getElementById("trades-list");
-      list.innerHTML = `<p style="color: var(--text-muted);">Loading trades...</p>`;
+      const area = document.getElementById("cards-area");
+      area.innerHTML = `<p style="color: var(--text-muted);">Loading trades...</p>`;
 
       const { data, error } = await db
         .from("trades")
         .select(`
-          id, title, description, created_at,
-          profiles ( username ),
+          id, title, description, status, created_at, user_id,
+          profiles ( username, avatar_url ),
           trade_offer_items ( sprites ( variant_name, rarity, image_url ) ),
           trade_want_items ( sprites ( variant_name, rarity, image_url ) )
         `)
-        .eq("status", "active")
         .order("created_at", { ascending: false });
 
       if (error) {
-        list.innerHTML = `<div class="status-message error">${error.message}</div>`;
+        area.innerHTML = `<div class="status-message error">${error.message}</div>`;
         return;
       }
 
-      if (!data || data.length === 0) {
-        list.innerHTML = `<div class="empty-state">No active trades yet. Be the first!</div>`;
-        return;
-      }
+      allTrades = data || [];
+      currentPage = 1;
+      renderBrowse();
+    }
 
-      list.innerHTML = "";
-      data.forEach(trade => {
-        const offerChips = trade.trade_offer_items.map(i => chip(i.sprites)).join("") || "—";
-        const wantChips = trade.trade_want_items.map(i => chip(i.sprites)).join("") || "—";
+    // ---------------- Filtro + orden + paginación ----------------
+    function getFilteredSortedTrades() {
+      const term = document.getElementById("search-input").value.trim().toLowerCase();
 
-        const card = document.createElement("div");
-        card.className = "trade-card";
-        card.innerHTML = `
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <div class="trade-card-title">${trade.title}</div>
-            <span style="color: var(--text-muted); font-size:0.85rem;">@${trade.profiles?.username || "user"}</span>
+      let list = allTrades.filter(trade => {
+        if (appliedFilters.status !== "any" && trade.status !== appliedFilters.status) return false;
+
+        if (appliedFilters.match !== "any") {
+          const m = matchMap[trade.user_id];
+          if (appliedFilters.match === "full" && m !== "full") return false;
+          if (appliedFilters.match === "partial" && m !== "partial" && m !== "full") return false;
+        }
+
+        const allItems = [...trade.trade_offer_items, ...trade.trade_want_items].map(i => i.sprites);
+
+        if (appliedFilters.rarity !== "any") {
+          if (!allItems.some(s => s.rarity === appliedFilters.rarity)) return false;
+        }
+
+        if (appliedFilters.spriteIds.size > 0) {
+          const itemNamesInTrade = new Set(allItems.map(s => s.variant_name));
+          const spriteNamesSelected = [...appliedFilters.spriteIds]
+            .map(id => allSpritesCatalog.find(s => s.id === id)?.variant_name)
+            .filter(Boolean);
+          if (!spriteNamesSelected.some(name => itemNamesInTrade.has(name))) return false;
+        }
+
+        if (term) {
+          const haystack = [
+            trade.title, trade.description, trade.profiles?.username,
+            ...allItems.map(s => s.variant_name),
+          ].filter(Boolean).join(" ").toLowerCase();
+          if (!haystack.includes(term)) return false;
+        }
+
+        return true;
+      });
+
+      const sortOrder = document.getElementById("sort-select").value;
+      list.sort((a, b) => {
+        const diff = new Date(b.created_at) - new Date(a.created_at);
+        return sortOrder === "newest" ? diff : -diff;
+      });
+
+      return list;
+    }
+
+    function tradeCardHtml(trade) {
+      const offerChips = trade.trade_offer_items.map(i => chip(i.sprites)).join("") || "—";
+      const wantChips = trade.trade_want_items.map(i => chip(i.sprites)).join("") || "—";
+      const match = matchMap[trade.user_id];
+      const isOwn = trade.user_id === currentUser.id;
+
+      return `
+        <div class="trade-card">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:0.5rem;">
+            <div class="trade-owner">
+              ${avatarHtml(trade.profiles)}
+              <div>
+                <div style="font-size:0.9rem; font-weight:600;">@${trade.profiles?.username || "user"}${isOwn ? " (you)" : ""}</div>
+                <div style="font-size:0.75rem; color:var(--text-muted);">${timeAgo(trade.created_at)}</div>
+              </div>
+            </div>
+            <div style="display:flex; flex-direction:column; align-items:flex-end; gap:0.3rem;">
+              <span class="trade-status-badge trade-status-${trade.status}">${trade.status}</span>
+              ${match ? `<span class="match-badge">${match === "full" ? "Full match" : "Partial match"}</span>` : ""}
+            </div>
           </div>
-          ${trade.description ? `<p style="color: var(--text-muted); font-size:0.9rem; margin:0;">${trade.description}</p>` : ""}
+
+          <div class="trade-card-title" style="margin-top:0.6rem;">${trade.title}</div>
+
           <div class="trade-columns">
             <div>
               <div class="trade-col-label">Offering</div>
-              ${offerChips}
+              <div class="chip-row">${offerChips}</div>
             </div>
             <div>
               <div class="trade-col-label">Looking for</div>
-              ${wantChips}
+              <div class="chip-row">${wantChips}</div>
             </div>
           </div>
-        `;
-        list.appendChild(card);
+
+          <button class="btn btn-ghost view-details-btn" style="align-self:flex-start; padding:0.4rem 0.8rem;">👁 View Details</button>
+          <div class="details-panel">
+            ${trade.description ? `<p style="margin:0 0 0.6rem;">${trade.description}</p>` : `<p style="margin:0 0 0.6rem;">No additional description.</p>`}
+            <p style="margin:0;">Posted ${new Date(trade.created_at).toLocaleDateString()}</p>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderBrowse() {
+      const area = document.getElementById("cards-area");
+      const filtered = getFilteredSortedTrades();
+
+      if (filtered.length === 0) {
+        area.innerHTML = `<div class="empty-state">No trades match your filters.</div>`;
+        document.getElementById("pagination").innerHTML = "";
+        return;
+      }
+
+      const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+      currentPage = Math.min(currentPage, totalPages);
+      const pageItems = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+      area.innerHTML = pageItems.map(tradeCardHtml).join("");
+
+      area.querySelectorAll(".view-details-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const panel = btn.nextElementSibling;
+          panel.style.display = panel.style.display === "block" ? "none" : "block";
+        });
+      });
+
+      renderPagination(totalPages);
+    }
+
+    function renderPagination(totalPages) {
+      const el = document.getElementById("pagination");
+      if (totalPages <= 1) { el.innerHTML = ""; return; }
+
+      let html = `<button ${currentPage === 1 ? "disabled" : ""} data-page="${currentPage - 1}">←</button>`;
+      for (let p = 1; p <= totalPages; p++) {
+        if (p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1) {
+          html += `<button class="${p === currentPage ? "active" : ""}" data-page="${p}">${p}</button>`;
+        } else if (Math.abs(p - currentPage) === 2) {
+          html += `<span style="color:var(--text-muted); padding:0.4rem;">…</span>`;
+        }
+      }
+      html += `<button ${currentPage === totalPages ? "disabled" : ""} data-page="${currentPage + 1}">→</button>`;
+      el.innerHTML = html;
+
+      el.querySelectorAll("button[data-page]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          currentPage = parseInt(btn.dataset.page, 10);
+          renderBrowse();
+        });
       });
     }
+
+    document.getElementById("search-input").addEventListener("input", () => {
+      currentPage = 1;
+      renderBrowse();
+    });
+    document.getElementById("sort-select").addEventListener("change", () => renderBrowse());
+
+    document.getElementById("apply-filters-btn").addEventListener("click", () => {
+      appliedFilters = {
+        status: document.getElementById("filter-status").value,
+        match: document.getElementById("filter-match").value,
+        rarity: document.getElementById("filter-rarity").value,
+        spriteIds: new Set(selectedSpriteFilterIds),
+      };
+      currentPage = 1;
+      renderBrowse();
+    });
+
+    document.getElementById("clear-filters-btn").addEventListener("click", () => {
+      document.getElementById("filter-status").value = "any";
+      document.getElementById("filter-match").value = "any";
+      document.getElementById("filter-rarity").value = "any";
+      selectedSpriteFilterIds.clear();
+      document.getElementById("sprite-filter-search").value = "";
+      renderSpriteFilterList("");
+      appliedFilters = { status: "any", match: "any", rarity: "any", spriteIds: new Set() };
+      currentPage = 1;
+      renderBrowse();
+    });
+
+    document.getElementById("grid-view-btn").addEventListener("click", () => {
+      viewMode = "grid";
+      document.getElementById("cards-area").className = "cards-area grid-view";
+      document.getElementById("grid-view-btn").classList.add("active");
+      document.getElementById("list-view-btn").classList.remove("active");
+    });
+    document.getElementById("list-view-btn").addEventListener("click", () => {
+      viewMode = "list";
+      document.getElementById("cards-area").className = "cards-area list-view";
+      document.getElementById("list-view-btn").classList.add("active");
+      document.getElementById("grid-view-btn").classList.remove("active");
+    });
 
     // ---------------- My Trades: manage (edit / pause / reactivate / delete) ----------------
     async function loadMyTrades() {
@@ -181,16 +576,17 @@
               <div class="trade-card-title">${trade.title}</div>
               <span class="trade-status-badge trade-status-${trade.status}">${trade.status}</span>
             </div>
+            <span style="color:var(--text-muted); font-size:0.75rem;">${timeAgo(trade.created_at)}</span>
           </div>
           ${trade.description ? `<p style="color: var(--text-muted); font-size:0.9rem; margin:0;">${trade.description}</p>` : ""}
           <div class="trade-columns">
             <div>
               <div class="trade-col-label">Offering</div>
-              ${offerChips}
+              <div class="chip-row">${offerChips}</div>
             </div>
             <div>
               <div class="trade-col-label">Looking for</div>
-              ${wantChips}
+              <div class="chip-row">${wantChips}</div>
             </div>
           </div>
           <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
@@ -227,6 +623,10 @@
 
           if (newTitle.length < 3) {
             statusEl.innerHTML = `<div class="status-message error">Title needs at least 3 characters.</div>`;
+            return;
+          }
+          if (containsProfanity(newTitle) || containsProfanity(newDesc)) {
+            statusEl.innerHTML = `<div class="status-message error">Please remove inappropriate language.</div>`;
             return;
           }
 
@@ -269,6 +669,7 @@
       });
     }
 
+    // ---------------- Create trade ----------------
     async function loadUserSpritesForForm() {
       const [{ data: owned }, { data: wanted }] = await Promise.all([
         db.from("user_sprites_owned").select("sprite_id, sprites(variant_name)").eq("user_id", currentUser.id),
@@ -306,6 +707,10 @@
         statusEl.innerHTML = `<div class="status-message error">Title needs at least 3 characters.</div>`;
         return;
       }
+      if (containsProfanity(title) || containsProfanity(description)) {
+        statusEl.innerHTML = `<div class="status-message error">Please remove inappropriate language from your title or description.</div>`;
+        return;
+      }
       if (offerIds.length === 0 || wantIds.length === 0) {
         statusEl.innerHTML = `<div class="status-message error">Select at least one Sprite on each side.</div>`;
         return;
@@ -340,7 +745,7 @@
       document.getElementById("trade-description").value = "";
       document.querySelectorAll(".offer-check, .want-check").forEach(c => c.checked = false);
 
-      document.querySelector('.tab[data-tab="browse"]').click();
+      showView("browse");
       loadTrades();
     });
 
@@ -349,6 +754,8 @@
       if (!currentUser) return;
 
       await renderNav("trades.html");
+      await loadMatchMap();
+      await loadSpriteCatalogForFilter();
       await loadTrades();
     })();
   </script>
