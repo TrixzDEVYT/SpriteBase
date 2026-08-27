@@ -6,77 +6,188 @@
   <title>SpriteBase — My Collection</title>
   <link rel="stylesheet" href="styles.css" />
   <style>
-    .combobox { position: relative; flex: 1; min-width: 200px; }
-    .combobox-input { margin-bottom: 0; }
-    .combobox-list {
-      position: absolute;
-      top: calc(100% + 6px);
-      left: 0;
-      right: 0;
+    .collection-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .stats-row { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; }
+    .stat-pill {
+      display: flex; align-items: center; gap: 0.6rem;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 0.6rem 1rem;
+    }
+    .stat-pill .num { font-family: var(--font-display); font-size: 1.3rem; }
+    .stat-pill .lbl { font-size: 0.78rem; color: var(--text-muted); }
+    .progress-pill {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 0.6rem 1rem; min-width: 220px;
+    }
+    .progress-bar-track {
+      height: 8px; border-radius: 999px; background: var(--bg);
+      overflow: hidden; margin-top: 0.4rem;
+    }
+    .progress-bar-fill { height: 100%; background: var(--accent); border-radius: 999px; }
+
+    .toolbar-row {
+      display: flex; gap: 0.8rem; flex-wrap: wrap; align-items: center;
+      margin-bottom: 1rem;
+    }
+    .toolbar-row input[type="text"] { margin-bottom: 0; flex: 1; min-width: 200px; }
+    .segmented { display: flex; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+    .segmented button {
+      background: var(--surface); border: none; color: var(--text-muted);
+      padding: 0.6rem 1rem; cursor: pointer; font-family: var(--font-body); font-size: 0.88rem;
+    }
+    .segmented button.active { background: var(--accent); color: white; }
+
+    .filters-toggle-panel {
+      display: none;
+      gap: 1rem;
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 10px;
-      max-height: 260px;
-      overflow-y: auto;
-      z-index: 20;
-      display: none;
+      border-radius: 12px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
     }
-    .combobox-list.open { display: block; }
-    .combobox-item {
-      display: flex;
-      align-items: center;
-      gap: 0.6rem;
-      padding: 0.55rem 0.8rem;
-      cursor: pointer;
-      font-size: 0.9rem;
+    .filters-toggle-panel.open { display: flex; }
+    .filters-toggle-panel > div { flex: 1; min-width: 160px; }
+    .filters-toggle-panel select { margin-bottom: 0; }
+
+    .quick-mark-bar {
+      display: flex; justify-content: space-between; align-items: center;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 0.8rem 1.2rem; margin-bottom: 1.5rem;
+      flex-wrap: wrap; gap: 0.8rem;
     }
-    .combobox-item:hover, .combobox-item.highlighted {
-      background: var(--surface-hover);
+    .quick-mark-hints { display: flex; gap: 1rem; flex-wrap: wrap; font-size: 0.82rem; color: var(--text-muted); }
+    .quick-mark-hints span { display: flex; align-items: center; gap: 0.35rem; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+    .dot-have { background: var(--success); }
+    .dot-want { background: var(--rarity-rare); }
+
+    .toggle-switch {
+      position: relative; width: 42px; height: 24px;
+      background: var(--border); border-radius: 999px; cursor: pointer;
+      transition: background 0.15s ease; flex-shrink: 0;
     }
-    .combobox-item img {
-      width: 24px; height: 24px; border-radius: 5px; object-fit: cover; flex-shrink: 0;
+    .toggle-switch.on { background: var(--accent); }
+    .toggle-switch .knob {
+      position: absolute; top: 2px; left: 2px; width: 20px; height: 20px;
+      background: white; border-radius: 50%; transition: left 0.15s ease;
     }
-    .combobox-item .cb-thumb-empty {
-      width: 24px; height: 24px; border-radius: 5px; background: var(--bg); flex-shrink: 0;
+    .toggle-switch.on .knob { left: 20px; }
+
+    .collection-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+      gap: 1rem;
     }
-    .combobox-empty { padding: 0.7rem 0.8rem; color: var(--text-muted); font-size: 0.85rem; }
+    .sprite-tile {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem;
+      position: relative;
+      cursor: default;
+    }
+    .sprite-tile.quick-mark { cursor: pointer; }
+    .tile-top-row { display: flex; justify-content: space-between; align-items: flex-start; }
+    .crown-badge {
+      display: flex; align-items: center; gap: 0.2rem;
+      font-family: var(--font-display); font-size: 0.9rem; color: #ffd166;
+    }
+    .crown-badge img { width: 16px; height: 16px; }
+    .badge-special { background: rgba(74,222,128,0.15); color: var(--success); }
+    .tile-image { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 10px; margin-top: 0.6rem; }
+    .tile-name { font-family: var(--font-display); margin-top: 0.5rem; font-size: 1.05rem; }
+    .tile-controls { display: flex; gap: 0.8rem; margin-top: 0.5rem; font-size: 0.85rem; }
+    .tile-controls label { display: flex; align-items: center; gap: 0.3rem; color: var(--text); font-weight: 400; margin: 0; }
+    .tile-controls input[type="checkbox"] { width: auto; margin: 0; }
+    .tile-level { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem; font-size: 0.82rem; color: var(--text-muted); }
+    .tile-level input {
+      width: 50px; margin: 0; padding: 0.3rem 0.4rem; text-align: center;
+    }
+    .tile-level input:disabled { opacity: 0.4; }
+
+    .load-more-row { text-align: center; margin-top: 2rem; color: var(--text-muted); font-size: 0.9rem; }
+    .load-more-row button {
+      display: block; margin: 0.6rem auto 0;
+    }
   </style>
 </head>
 <body>
   <div id="site-header"></div>
 
   <div class="page">
-    <div class="page-header">
-      <h1>My Collection</h1>
-      <p>Mark the Sprites you have and the ones you're looking for.</p>
-    </div>
-
-    <div class="card" style="margin-bottom: 1.5rem;">
-      <label for="sprite-search">Search a Sprite</label>
-      <div style="display:flex; gap: 0.6rem; flex-wrap: wrap; align-items: flex-start;">
-        <div class="combobox">
-          <input type="text" id="sprite-search" class="combobox-input" placeholder="Type to search..." autocomplete="off" />
-          <div id="combobox-list" class="combobox-list"></div>
-        </div>
-        <button class="btn btn-primary" id="add-owned-btn">+ I have it</button>
-        <button class="btn btn-ghost" id="add-wanted-btn">+ I want it</button>
-        <button class="btn btn-ghost" id="refresh-catalog-btn" title="Refresh catalog">↻</button>
+    <div class="collection-header">
+      <div>
+        <h1>My Collection</h1>
+        <p>Track your progress and organize your Sprites.</p>
       </div>
-      <div id="add-status"></div>
+      <div class="stats-row">
+        <div class="stat-pill"><span class="num" id="stat-have">0</span><span class="lbl">Have</span></div>
+        <div class="stat-pill"><span class="num" id="stat-want">0</span><span class="lbl">Want</span></div>
+        <div class="stat-pill"><span class="num" id="stat-missing">0</span><span class="lbl">Missing</span></div>
+        <div class="progress-pill">
+          <div style="display:flex; justify-content:space-between; font-size:0.85rem;">
+            <span id="progress-percent" style="color:var(--accent); font-weight:600;">0% Complete</span>
+            <span id="progress-fraction" style="color:var(--text-muted);">0 / 0</span>
+          </div>
+          <div class="progress-bar-track"><div class="progress-bar-fill" id="progress-bar-fill" style="width:0%;"></div></div>
+        </div>
+      </div>
     </div>
 
-    <div class="tabs">
-      <button class="tab active" data-tab="owned">Have</button>
-      <button class="tab" data-tab="wanted">Want</button>
+    <div class="toolbar-row">
+      <input type="text" id="search-input" placeholder="Search Sprites..." />
+      <div class="segmented" id="status-segmented">
+        <button class="active" data-mode="all">All</button>
+        <button data-mode="have">Have</button>
+        <button data-mode="want">Want</button>
+        <button data-mode="missing">Missing</button>
+      </div>
+      <button class="btn btn-ghost" id="filters-toggle-btn">⚗ Filters ▾</button>
     </div>
 
-    <div id="owned-section">
-      <div id="owned-grid" class="sprite-grid"></div>
+    <div class="filters-toggle-panel" id="filters-panel">
+      <div>
+        <label for="filter-rarity">Rarity</label>
+        <select id="filter-rarity">
+          <option value="any">Any</option>
+          <option value="common">Common</option>
+          <option value="raro">Rare</option>
+          <option value="epico">Epic</option>
+          <option value="legendario">Legendary</option>
+          <option value="mitico">Mythic</option>
+        </select>
+      </div>
+      <div>
+        <label for="filter-style">Style</label>
+        <select id="filter-style">
+          <option value="any">Any</option>
+        </select>
+      </div>
     </div>
 
-    <div id="wanted-section" style="display:none;">
-      <div id="wanted-grid" class="sprite-grid"></div>
+    <div class="quick-mark-bar">
+      <div>
+        <div style="font-weight:600;">⚡ Quick Mark Mode</div>
+        <div class="quick-mark-hints">
+          <span><span class="dot dot-have"></span>Click = Have</span>
+          <span><span class="dot dot-want"></span>Right Click = Want</span>
+          <span>Click Again = Clear</span>
+        </div>
+      </div>
+      <div class="toggle-switch on" id="quick-mark-toggle"><div class="knob"></div></div>
     </div>
+
+    <div id="collection-grid" class="collection-grid"></div>
+    <div class="load-more-row" id="load-more-row"></div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -86,228 +197,271 @@
   <script>
     let currentUser = null;
     let allSprites = [];
-    let selectedSpriteId = null;
+    let ownedMap = new Map();   // sprite_id -> { rowId, level }
+    let wantedMap = new Map();  // sprite_id -> rowId
+
+    let filterMode = "all";
+    let filterRarity = "any";
+    let filterStyle = "any";
+    let searchTerm = "";
+    let quickMarkEnabled = true;
+    const PAGE_SIZE = 24;
+    let visibleCount = PAGE_SIZE;
 
     const RARITY_LABELS = {
-      common: "Common",
-      raro: "Rare",
-      epico: "Epic",
-      legendario: "Legendary",
-      mitico: "Mythic",
+      common: "Common", raro: "Rare", epico: "Epic",
+      legendario: "Legendary", mitico: "Mythic",
     };
 
-    function rarityLabel(rarity) {
-      return RARITY_LABELS[rarity] || rarity;
+    async function loadData() {
+      const [{ data: sprites }, { data: owned }, { data: wanted }] = await Promise.all([
+        db.from("sprites").select("id, variant_name, rarity, image_url").eq("is_active", true).order("variant_name"),
+        db.from("user_sprites_owned").select("id, sprite_id, level").eq("user_id", currentUser.id),
+        db.from("user_sprites_wanted").select("id, sprite_id").eq("user_id", currentUser.id),
+      ]);
+
+      allSprites = sprites || [];
+      ownedMap = new Map((owned || []).map(o => [o.sprite_id, { rowId: o.id, level: o.level }]));
+      wantedMap = new Map((wanted || []).map(w => [w.sprite_id, w.rowId ?? w.id]));
+
+      populateStyleFilter();
+      renderStats();
+      renderGrid();
     }
 
-    function rarityBadge(rarity) {
-      return `<span class="badge badge-${rarity}">${rarityLabel(rarity)}</span>`;
+    function populateStyleFilter() {
+      const styles = new Set(allSprites.map(s => getSpriteType(s.variant_name)));
+      const select = document.getElementById("filter-style");
+      const current = select.value;
+      select.innerHTML = `<option value="any">Any</option>` +
+        [...styles].sort().map(s => `<option value="${s}">${s}</option>`).join("");
+      select.value = current || "any";
     }
 
-    function spriteCard(sprite, { removable, onRemove }) {
-      const div = document.createElement("div");
-      div.className = `sprite-card rarity-${sprite.rarity}`;
-      div.innerHTML = `
-        ${rarityBadge(sprite.rarity)}
-        ${sprite.image_url
-          ? `<img src="${sprite.image_url}" style="width:100%; aspect-ratio:1; object-fit:cover; border-radius:10px; margin-top:0.6rem;" onerror="this.style.display='none'" />`
-          : ""}
-        <div class="sprite-card-name">${sprite.variant_name}</div>
-        <div style="font-size:0.78rem; color: var(--text-muted); margin-top:-0.2rem;">${getSpriteType(sprite.variant_name)}</div>
-      `;
-      if (removable) {
-        const btn = document.createElement("button");
-        btn.className = "btn btn-danger";
-        btn.textContent = "Remove";
-        btn.style.cssText = "width:100%; margin-top:0.7rem; padding:0.4rem;";
-        btn.addEventListener("click", onRemove);
-        div.appendChild(btn);
-      }
-      return div;
+    function renderStats() {
+      const total = allSprites.length;
+      const haveCount = ownedMap.size;
+      const wantCount = wantedMap.size;
+      const missingCount = Math.max(total - haveCount - wantCount, 0);
+      const percent = total > 0 ? Math.round((haveCount / total) * 100) : 0;
+
+      document.getElementById("stat-have").textContent = haveCount;
+      document.getElementById("stat-want").textContent = wantCount;
+      document.getElementById("stat-missing").textContent = missingCount;
+      document.getElementById("progress-percent").textContent = `${percent}% Complete`;
+      document.getElementById("progress-fraction").textContent = `${haveCount} / ${total}`;
+      document.getElementById("progress-bar-fill").style.width = `${percent}%`;
     }
 
-    function renderEmpty(container, message) {
-      container.innerHTML = `<div class="empty-state">${message}</div>`;
+    function getFilteredSprites() {
+      return allSprites.filter(s => {
+        if (searchTerm && !s.variant_name.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+        if (filterRarity !== "any" && s.rarity !== filterRarity) return false;
+        if (filterStyle !== "any" && getSpriteType(s.variant_name) !== filterStyle) return false;
+
+        const isOwned = ownedMap.has(s.id);
+        const isWanted = wantedMap.has(s.id);
+        if (filterMode === "have" && !isOwned) return false;
+        if (filterMode === "want" && !isWanted) return false;
+        if (filterMode === "missing" && (isOwned || isWanted)) return false;
+
+        return true;
+      });
     }
 
-    // ---------------- Combobox / search ----------------
-    const searchInput = document.getElementById("sprite-search");
-    const comboList = document.getElementById("combobox-list");
+    function tileHtml(sprite) {
+      const owned = ownedMap.get(sprite.id);
+      const isOwned = !!owned;
+      const isWanted = wantedMap.has(sprite.id);
+      const type = getSpriteType(sprite.variant_name);
+      const isSpecial = type !== "Normal";
+      const level = owned?.level ?? "";
+      const showCrown = isOwned && owned.level === 5;
 
-    function renderComboList(filter = "") {
-      const term = filter.trim().toLowerCase();
-      const matches = allSprites.filter(s =>
-        s.variant_name.toLowerCase().includes(term)
-      ).slice(0, 30);
+      const badgeHtml = isSpecial
+        ? `<span class="badge badge-special">Special</span>`
+        : `<span class="badge badge-${sprite.rarity}">${RARITY_LABELS[sprite.rarity] || sprite.rarity}</span>`;
 
-      if (matches.length === 0) {
-        comboList.innerHTML = `<div class="combobox-empty">No matching Sprites</div>`;
-      } else {
-        comboList.innerHTML = matches.map(s => `
-          <div class="combobox-item" data-id="${s.id}">
-            ${s.image_url
-              ? `<img src="${s.image_url}" onerror="this.style.display='none'" />`
-              : `<div class="cb-thumb-empty"></div>`}
-            <span>${s.variant_name} (${rarityLabel(s.rarity)})</span>
+      const crownHtml = showCrown
+        ? `<span class="crown-badge"><img src="https://media.discordapp.net/attachments/1175183505660063784/1542422066178035802/crown.webp" alt="Level 5" />5</span>`
+        : "";
+
+      return `
+        <div class="sprite-tile ${quickMarkEnabled ? "quick-mark" : ""}" data-sprite-id="${sprite.id}">
+          <div class="tile-top-row">${badgeHtml}${crownHtml}</div>
+          ${sprite.image_url
+            ? `<img src="${sprite.image_url}" class="tile-image" onerror="this.style.display='none'" />`
+            : ""}
+          <div class="tile-name">${sprite.variant_name}</div>
+          <div class="tile-controls" data-static="true">
+            <label><input type="checkbox" class="have-check" ${isOwned ? "checked" : ""} /> Have</label>
+            <label><input type="checkbox" class="want-check" ${isWanted ? "checked" : ""} /> Want</label>
           </div>
-        `).join("");
-      }
-      comboList.classList.add("open");
+          <div class="tile-level" data-static="true">
+            Level:
+            <input type="number" class="level-input" min="1" max="5" value="${level}" ${isOwned ? "" : "disabled"} />
+          </div>
+        </div>
+      `;
     }
 
-    comboList.addEventListener("click", (e) => {
-      const item = e.target.closest(".combobox-item");
-      if (!item || !item.dataset.id) return;
-      const sprite = allSprites.find(s => s.id === item.dataset.id);
-      if (!sprite) return;
-      selectedSpriteId = sprite.id;
-      searchInput.value = `${sprite.variant_name} (${rarityLabel(sprite.rarity)})`;
-      comboList.classList.remove("open");
-    });
-
-    searchInput.addEventListener("input", () => {
-      selectedSpriteId = null;
-      renderComboList(searchInput.value);
-    });
-
-    searchInput.addEventListener("focus", () => {
-      renderComboList(searchInput.value);
-    });
-
-    document.addEventListener("click", (e) => {
-      if (!e.target.closest(".combobox")) {
-        comboList.classList.remove("open");
+    async function setHave(spriteId, on) {
+      if (on) {
+        if (wantedMap.has(spriteId)) {
+          await db.from("user_sprites_wanted").delete().eq("id", wantedMap.get(spriteId));
+          wantedMap.delete(spriteId);
+        }
+        const { data } = await db
+          .from("user_sprites_owned")
+          .upsert({ user_id: currentUser.id, sprite_id: spriteId, level: 1 }, { onConflict: "user_id,sprite_id" })
+          .select()
+          .single();
+        if (data) ownedMap.set(spriteId, { rowId: data.id, level: data.level });
+      } else {
+        const entry = ownedMap.get(spriteId);
+        if (entry) {
+          await db.from("user_sprites_owned").delete().eq("id", entry.rowId);
+          ownedMap.delete(spriteId);
+        }
       }
-    });
-
-    async function loadCatalog() {
-      const { data, error } = await db
-        .from("sprites")
-        .select("id, variant_name, rarity, image_url")
-        .eq("is_active", true)
-        .order("variant_name");
-
-      if (error || !data) {
-        searchInput.placeholder = "Couldn't load catalog";
-        searchInput.disabled = true;
-        return;
-      }
-
-      allSprites = data;
-      searchInput.disabled = false;
-      searchInput.placeholder = data.length
-        ? "Type to search..."
-        : "No Sprites in the catalog yet";
+      renderStats();
     }
 
-    async function loadOwned() {
-      const grid = document.getElementById("owned-grid");
-      const { data, error } = await db
-        .from("user_sprites_owned")
-        .select("id, quantity, sprites(id, variant_name, rarity, image_url)")
-        .eq("user_id", currentUser.id);
+    async function setWant(spriteId, on) {
+      if (on) {
+        if (ownedMap.has(spriteId)) {
+          await db.from("user_sprites_owned").delete().eq("id", ownedMap.get(spriteId).rowId);
+          ownedMap.delete(spriteId);
+        }
+        const { data } = await db
+          .from("user_sprites_wanted")
+          .upsert({ user_id: currentUser.id, sprite_id: spriteId }, { onConflict: "user_id,sprite_id" })
+          .select()
+          .single();
+        if (data) wantedMap.set(spriteId, data.id);
+      } else {
+        const rowId = wantedMap.get(spriteId);
+        if (rowId) {
+          await db.from("user_sprites_wanted").delete().eq("id", rowId);
+          wantedMap.delete(spriteId);
+        }
+      }
+      renderStats();
+    }
 
-      if (error) {
-        renderEmpty(grid, "Couldn't load your collection.");
+    async function setLevel(spriteId, level) {
+      const entry = ownedMap.get(spriteId);
+      if (!entry) return;
+      const clamped = Math.min(5, Math.max(1, parseInt(level, 10) || 1));
+      await db.from("user_sprites_owned").update({ level: clamped }).eq("id", entry.rowId);
+      entry.level = clamped;
+    }
+
+    function renderGrid() {
+      const grid = document.getElementById("collection-grid");
+      const filtered = getFilteredSprites();
+
+      if (filtered.length === 0) {
+        grid.innerHTML = `<div class="empty-state" style="grid-column: 1/-1;">No Sprites match your search or filters.</div>`;
+        document.getElementById("load-more-row").innerHTML = "";
         return;
       }
-      if (!data || data.length === 0) {
-        renderEmpty(grid, "You haven't marked any Sprites as owned yet.");
-        return;
-      }
 
-      grid.innerHTML = "";
-      data.forEach(row => {
-        const card = spriteCard(
-          row.sprites,
-          {
-            removable: true,
-            onRemove: async () => {
-              await db.from("user_sprites_owned").delete().eq("id", row.id);
-              loadOwned();
-            },
-          }
-        );
-        grid.appendChild(card);
+      const visible = filtered.slice(0, visibleCount);
+      grid.innerHTML = visible.map(tileHtml).join("");
+
+      // Checkboxes y nivel: siempre activos (independientes del modo Quick Mark)
+      grid.querySelectorAll(".sprite-tile").forEach(tile => {
+        const spriteId = tile.dataset.spriteId;
+
+        tile.querySelector(".have-check").addEventListener("click", async (e) => {
+          e.stopPropagation();
+          await setHave(spriteId, e.target.checked);
+          renderGrid();
+        });
+
+        tile.querySelector(".want-check").addEventListener("click", async (e) => {
+          e.stopPropagation();
+          await setWant(spriteId, e.target.checked);
+          renderGrid();
+        });
+
+        tile.querySelector(".level-input").addEventListener("click", (e) => e.stopPropagation());
+        tile.querySelector(".level-input").addEventListener("change", async (e) => {
+          await setLevel(spriteId, e.target.value);
+          renderGrid();
+        });
+
+        // Quick Mark Mode: click izquierdo = Have (o limpia si ya lo tienes),
+        // click derecho = Want (o limpia si ya lo buscabas).
+        if (quickMarkEnabled) {
+          tile.addEventListener("click", async (e) => {
+            if (e.target.closest('[data-static="true"]')) return;
+            const isOwned = ownedMap.has(spriteId);
+            await setHave(spriteId, !isOwned);
+            renderGrid();
+          });
+
+          tile.addEventListener("contextmenu", async (e) => {
+            e.preventDefault();
+            if (e.target.closest('[data-static="true"]')) return;
+            const isWanted = wantedMap.has(spriteId);
+            await setWant(spriteId, !isWanted);
+            renderGrid();
+          });
+        }
       });
+
+      const loadMoreRow = document.getElementById("load-more-row");
+      if (visibleCount < filtered.length) {
+        loadMoreRow.innerHTML = `
+          <div>Loaded ${visible.length} of ${filtered.length}</div>
+          <button class="btn btn-ghost" id="load-more-btn">Load more</button>
+        `;
+        document.getElementById("load-more-btn").addEventListener("click", () => {
+          visibleCount += PAGE_SIZE;
+          renderGrid();
+        });
+      } else {
+        loadMoreRow.innerHTML = `<div>Loaded ${visible.length} of ${filtered.length}</div>`;
+      }
     }
 
-    async function loadWanted() {
-      const grid = document.getElementById("wanted-grid");
-      const { data, error } = await db
-        .from("user_sprites_wanted")
-        .select("id, sprites(id, variant_name, rarity, image_url)")
-        .eq("user_id", currentUser.id);
+    document.getElementById("search-input").addEventListener("input", (e) => {
+      searchTerm = e.target.value;
+      visibleCount = PAGE_SIZE;
+      renderGrid();
+    });
 
-      if (error) {
-        renderEmpty(grid, "Couldn't load your wishlist.");
-        return;
-      }
-      if (!data || data.length === 0) {
-        renderEmpty(grid, "You haven't marked any Sprites as wanted yet.");
-        return;
-      }
-
-      grid.innerHTML = "";
-      data.forEach(row => {
-        const card = spriteCard(
-          row.sprites,
-          {
-            removable: true,
-            onRemove: async () => {
-              await db.from("user_sprites_wanted").delete().eq("id", row.id);
-              loadWanted();
-            },
-          }
-        );
-        grid.appendChild(card);
-      });
-    }
-
-    document.querySelectorAll(".tab").forEach(tab => {
-      tab.addEventListener("click", () => {
-        document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
-        tab.classList.add("active");
-        const isOwned = tab.dataset.tab === "owned";
-        document.getElementById("owned-section").style.display = isOwned ? "block" : "none";
-        document.getElementById("wanted-section").style.display = isOwned ? "none" : "block";
+    document.querySelectorAll("#status-segmented button").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll("#status-segmented button").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        filterMode = btn.dataset.mode;
+        visibleCount = PAGE_SIZE;
+        renderGrid();
       });
     });
 
-    document.getElementById("add-owned-btn").addEventListener("click", async () => {
-      if (!selectedSpriteId) return;
-      const statusEl = document.getElementById("add-status");
-
-      const { error } = await db
-        .from("user_sprites_owned")
-        .upsert(
-          { user_id: currentUser.id, sprite_id: selectedSpriteId, quantity: 1 },
-          { onConflict: "user_id,sprite_id" }
-        );
-
-      statusEl.innerHTML = error
-        ? `<div class="status-message error">${error.message}</div>`
-        : `<div class="status-message success">Added to your collection.</div>`;
-
-      loadOwned();
+    document.getElementById("filters-toggle-btn").addEventListener("click", () => {
+      document.getElementById("filters-panel").classList.toggle("open");
     });
 
-    document.getElementById("add-wanted-btn").addEventListener("click", async () => {
-      if (!selectedSpriteId) return;
-      const statusEl = document.getElementById("add-status");
+    document.getElementById("filter-rarity").addEventListener("change", (e) => {
+      filterRarity = e.target.value;
+      visibleCount = PAGE_SIZE;
+      renderGrid();
+    });
+    document.getElementById("filter-style").addEventListener("change", (e) => {
+      filterStyle = e.target.value;
+      visibleCount = PAGE_SIZE;
+      renderGrid();
+    });
 
-      const { error } = await db
-        .from("user_sprites_wanted")
-        .upsert(
-          { user_id: currentUser.id, sprite_id: selectedSpriteId },
-          { onConflict: "user_id,sprite_id" }
-        );
-
-      statusEl.innerHTML = error
-        ? `<div class="status-message error">${error.message}</div>`
-        : `<div class="status-message success">Added to your wishlist.</div>`;
-
-      loadWanted();
+    document.getElementById("quick-mark-toggle").addEventListener("click", function () {
+      quickMarkEnabled = !quickMarkEnabled;
+      this.classList.toggle("on", quickMarkEnabled);
+      renderGrid();
     });
 
     (async () => {
@@ -315,11 +469,7 @@
       if (!currentUser) return;
 
       await renderNav("collection.html");
-      await loadCatalog();
-      await loadOwned();
-      await loadWanted();
-
-      document.getElementById("refresh-catalog-btn").addEventListener("click", loadCatalog);
+      await loadData();
     })();
   </script>
 </body>
