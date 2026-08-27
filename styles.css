@@ -3,7 +3,7 @@
    Tema "Loot Locker": índigo oscuro + acentos por rareza.
    ===================================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600&display=swap');
 
 :root {
   /* Superficies */
@@ -32,7 +32,7 @@
   --error: #ff6b6b;
 
   --radius: 14px;
-  --font-display: 'Space Grotesk', sans-serif;
+  --font-display: 'Anton', sans-serif;
   --font-body: 'Inter', sans-serif;
 }
 
@@ -138,9 +138,10 @@ a { color: inherit; }
   padding: 0.65rem 1.3rem;
   border-radius: 10px;
   border: none;
-  font-family: var(--font-body);
-  font-weight: 600;
-  font-size: 0.95rem;
+  font-family: var(--font-display);
+  letter-spacing: 0.02em;
+  font-weight: 400;
+  font-size: 1rem;
   cursor: pointer;
   transition: transform 0.1s ease, background 0.15s ease;
 }
@@ -241,7 +242,9 @@ textarea { resize: vertical; min-height: 80px; }
 .sprite-card.rarity-mitico    { box-shadow: 0 0 0 1px rgba(255,92,138,0.35), 0 8px 24px -12px rgba(255,92,138,0.5); }
 
 .sprite-card-name {
-  font-weight: 600;
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.01em;
   margin: 0.6rem 0 0.3rem;
 }
 
@@ -264,7 +267,7 @@ textarea { resize: vertical; min-height: 80px; }
   gap: 0.9rem;
 }
 
-.trade-card-title { font-size: 1.05rem; font-weight: 600; }
+.trade-card-title { font-family: var(--font-display); font-size: 1.2rem; font-weight: 400; letter-spacing: 0.01em; }
 
 .trade-columns {
   display: grid;

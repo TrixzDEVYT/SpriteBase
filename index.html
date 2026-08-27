@@ -1,16 +1,16 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SpriteBase — Entrar</title>
+  <title>SpriteBase — Sign In</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <div class="auth-wrapper">
     <div class="auth-card">
-      <h1 class="auth-title" id="form-title">Bienvenido de nuevo</h1>
-      <p class="auth-subtitle" id="form-subtitle">Entra a tu cuenta de SpriteBase</p>
+      <h1 class="auth-title" id="form-title">Welcome back</h1>
+      <p class="auth-subtitle" id="form-subtitle">Sign in to your SpriteBase account</p>
 
       <div id="status-box"></div>
 
@@ -21,19 +21,19 @@
         </div>
 
         <label for="email">Email</label>
-        <input type="email" id="email" required placeholder="tucorreo@ejemplo.com" />
+        <input type="email" id="email" required placeholder="you@example.com" />
 
-        <label for="password">Contraseña</label>
+        <label for="password">Password</label>
         <input type="password" id="password" required placeholder="••••••••" minlength="6" />
 
         <button type="submit" class="btn btn-primary" id="submit-btn" style="width:100%; margin-top: 0.3rem;">
-          Entrar
+          Sign In
         </button>
       </form>
 
       <div class="auth-switch">
-        <span id="switch-text">¿No tienes cuenta?</span>
-        <button id="switch-btn">Crear una</button>
+        <span id="switch-text">Don't have an account?</span>
+        <button id="switch-btn">Sign up</button>
       </div>
     </div>
   </div>
@@ -42,7 +42,7 @@
   <script src="supabaseClient.js"></script>
   <script src="auth.js"></script>
   <script>
-    let mode = "login"; // o "signup"
+    let mode = "login"; // or "signup"
 
     const form = document.getElementById("auth-form");
     const statusBox = document.getElementById("status-box");
@@ -52,16 +52,16 @@
       mode = newMode;
       const isSignup = mode === "signup";
       document.getElementById("form-title").textContent =
-        isSignup ? "Crea tu cuenta" : "Bienvenido de nuevo";
+        isSignup ? "Create your account" : "Welcome back";
       document.getElementById("form-subtitle").textContent =
-        isSignup ? "Empieza a organizar tus trades" : "Entra a tu cuenta de SpriteBase";
+        isSignup ? "Start organizing your trades" : "Sign in to your SpriteBase account";
       document.getElementById("username-field").style.display = isSignup ? "block" : "none";
       document.getElementById("username").required = isSignup;
-      submitBtn.textContent = isSignup ? "Crear cuenta" : "Entrar";
+      submitBtn.textContent = isSignup ? "Create Account" : "Sign In";
       document.getElementById("switch-text").textContent =
-        isSignup ? "¿Ya tienes cuenta?" : "¿No tienes cuenta?";
+        isSignup ? "Already have an account?" : "Don't have an account?";
       document.getElementById("switch-btn").textContent =
-        isSignup ? "Entrar" : "Crear una";
+        isSignup ? "Sign In" : "Sign up";
       statusBox.innerHTML = "";
     }
 

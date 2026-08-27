@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -11,30 +11,30 @@
 
   <div class="page">
     <div class="page-header">
-      <h1 id="welcome-title">Bienvenido</h1>
-      <p>Este es tu resumen en SpriteBase.</p>
+      <h1 id="welcome-title">Welcome</h1>
+      <p>Here's your SpriteBase summary.</p>
     </div>
 
     <div class="stats-grid">
       <div class="stat-card">
         <div class="stat-value" id="stat-owned">—</div>
-        <div class="stat-label">Sprites en tu colección</div>
+        <div class="stat-label">Sprites in your collection</div>
       </div>
       <div class="stat-card">
         <div class="stat-value" id="stat-wanted">—</div>
-        <div class="stat-label">Sprites que buscas</div>
+        <div class="stat-label">Sprites you're looking for</div>
       </div>
       <div class="stat-card">
         <div class="stat-value" id="stat-trades">—</div>
-        <div class="stat-label">Trades activos</div>
+        <div class="stat-label">Active trades</div>
       </div>
     </div>
 
     <div class="card">
-      <h3 style="margin-bottom: 1rem;">Acciones rápidas</h3>
+      <h3 style="margin-bottom: 1rem;">Quick actions</h3>
       <div style="display:flex; gap: 0.8rem; flex-wrap: wrap;">
-        <a href="collection.html" class="btn btn-primary">Editar mi colección</a>
-        <a href="trades.html" class="btn btn-ghost">Ver trades</a>
+        <a href="collection.html" class="btn btn-primary">Edit my collection</a>
+        <a href="trades.html" class="btn btn-ghost">View trades</a>
       </div>
     </div>
   </div>
@@ -56,7 +56,7 @@
         .maybeSingle();
 
       document.getElementById("welcome-title").textContent =
-        "Bienvenido, " + (profile?.username || "de nuevo");
+        "Welcome, " + (profile?.username || "back");
 
       const [{ count: ownedCount }, { count: wantedCount }, { count: tradesCount }] =
         await Promise.all([

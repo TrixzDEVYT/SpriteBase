@@ -4,6 +4,30 @@
 // =====================================================================
 
 /**
+ * Obtiene la sesión de forma robusta. db.auth.getSession() a veces
+ * responde "sin sesión" en el instante justo en que el cliente todavía
+ * está restaurando la sesión guardada (localStorage), causando
+ * redirecciones falsas al login. Si el primer intento da null, espera
+ * un evento de auth (o un timeout corto) antes de decidir que de
+ * verdad no hay sesión.
+ */
+async function getSessionRobust() {
+  const { data: { session } } = await db.auth.getSession();
+  if (session) return session;
+
+  return new Promise((resolve) => {
+    const { data: listener } = db.auth.onAuthStateChange((_event, s) => {
+      listener.subscription.unsubscribe();
+      resolve(s);
+    });
+    setTimeout(() => {
+      listener.subscription.unsubscribe();
+      resolve(null);
+    }, 800);
+  });
+}
+
+/**
  * Dibuja la barra de navegación dentro de <div id="site-header"></div>.
  * Cambia según si hay sesión activa o no.
  */
@@ -11,7 +35,7 @@ async function renderNav(activePage) {
   const el = document.getElementById("site-header");
   if (!el) return;
 
-  const { data: { session } } = await db.auth.getSession();
+  const session = await getSessionRobust();
 
   if (!session) {
     el.innerHTML = `
@@ -24,7 +48,7 @@ async function renderNav(activePage) {
 
   const links = [
     { href: "dashboard.html", label: "Dashboard" },
-    { href: "collection.html", label: "Colección" },
+    { href: "collection.html", label: "Collection" },
     { href: "trades.html", label: "Trades" },
   ];
 
@@ -41,7 +65,7 @@ async function renderNav(activePage) {
       <div class="nav-brand">Sprite<span>Base</span></div>
       <div class="nav-links">
         ${linksHtml}
-        <button class="btn btn-ghost" id="logout-btn" style="padding:0.4rem 0.9rem;">Salir</button>
+        <button class="btn btn-ghost" id="logout-btn" style="padding:0.4rem 0.9rem;">Log out</button>
       </div>
     </nav>
   `;
@@ -57,7 +81,7 @@ async function renderNav(activePage) {
  * Llamar al inicio de dashboard.html, collection.html, trades.html.
  */
 async function requireAuth() {
-  const { data: { session } } = await db.auth.getSession();
+  const session = await getSessionRobust();
   if (!session) {
     window.location.href = "index.html";
     return null;
@@ -70,7 +94,7 @@ async function requireAuth() {
  * Llamar al inicio de index.html.
  */
 async function redirectIfLoggedIn() {
-  const { data: { session } } = await db.auth.getSession();
+  const session = await getSessionRobust();
   if (session) {
     window.location.href = "dashboard.html";
   }

@@ -1,36 +1,73 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SpriteBase — Mi Colección</title>
+  <title>SpriteBase — My Collection</title>
   <link rel="stylesheet" href="styles.css" />
+  <style>
+    .combobox { position: relative; flex: 1; min-width: 200px; }
+    .combobox-input { margin-bottom: 0; }
+    .combobox-list {
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      right: 0;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      max-height: 260px;
+      overflow-y: auto;
+      z-index: 20;
+      display: none;
+    }
+    .combobox-list.open { display: block; }
+    .combobox-item {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.55rem 0.8rem;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    .combobox-item:hover, .combobox-item.highlighted {
+      background: var(--surface-hover);
+    }
+    .combobox-item img {
+      width: 24px; height: 24px; border-radius: 5px; object-fit: cover; flex-shrink: 0;
+    }
+    .combobox-item .cb-thumb-empty {
+      width: 24px; height: 24px; border-radius: 5px; background: var(--bg); flex-shrink: 0;
+    }
+    .combobox-empty { padding: 0.7rem 0.8rem; color: var(--text-muted); font-size: 0.85rem; }
+  </style>
 </head>
 <body>
   <div id="site-header"></div>
 
   <div class="page">
     <div class="page-header">
-      <h1>Mi Colección</h1>
-      <p>Marca los Sprites que tienes y los que buscas.</p>
+      <h1>My Collection</h1>
+      <p>Mark the Sprites you have and the ones you're looking for.</p>
     </div>
 
     <div class="card" style="margin-bottom: 1.5rem;">
-      <label for="sprite-select" style="margin-bottom: 0.5rem;">Añadir un Sprite</label>
+      <label for="sprite-search">Search a Sprite</label>
       <div style="display:flex; gap: 0.6rem; flex-wrap: wrap; align-items: flex-start;">
-        <select id="sprite-select" style="flex: 1; min-width: 200px;">
-          <option value="">Cargando catálogo...</option>
-        </select>
-        <button class="btn btn-primary" id="add-owned-btn">+ Lo tengo</button>
-        <button class="btn btn-ghost" id="add-wanted-btn">+ Lo busco</button>
-        <button class="btn btn-ghost" id="refresh-catalog-btn" title="Actualizar catálogo">↻</button>
+        <div class="combobox">
+          <input type="text" id="sprite-search" class="combobox-input" placeholder="Type to search..." autocomplete="off" />
+          <div id="combobox-list" class="combobox-list"></div>
+        </div>
+        <button class="btn btn-primary" id="add-owned-btn">+ I have it</button>
+        <button class="btn btn-ghost" id="add-wanted-btn">+ I want it</button>
+        <button class="btn btn-ghost" id="refresh-catalog-btn" title="Refresh catalog">↻</button>
       </div>
       <div id="add-status"></div>
     </div>
 
     <div class="tabs">
-      <button class="tab active" data-tab="owned">Tengo</button>
-      <button class="tab" data-tab="wanted">Busco</button>
+      <button class="tab active" data-tab="owned">Have</button>
+      <button class="tab" data-tab="wanted">Want</button>
     </div>
 
     <div id="owned-section">
@@ -48,9 +85,22 @@
   <script>
     let currentUser = null;
     let allSprites = [];
+    let selectedSpriteId = null;
+
+    const RARITY_LABELS = {
+      common: "Common",
+      raro: "Rare",
+      epico: "Epic",
+      legendario: "Legendary",
+      mitico: "Mythic",
+    };
+
+    function rarityLabel(rarity) {
+      return RARITY_LABELS[rarity] || rarity;
+    }
 
     function rarityBadge(rarity) {
-      return `<span class="badge badge-${rarity}">${rarity}</span>`;
+      return `<span class="badge badge-${rarity}">${rarityLabel(rarity)}</span>`;
     }
 
     function spriteCard(sprite, { removable, onRemove }) {
@@ -66,7 +116,7 @@
       if (removable) {
         const btn = document.createElement("button");
         btn.className = "btn btn-danger";
-        btn.textContent = "Quitar";
+        btn.textContent = "Remove";
         btn.style.cssText = "width:100%; margin-top:0.7rem; padding:0.4rem;";
         btn.addEventListener("click", onRemove);
         div.appendChild(btn);
@@ -78,27 +128,74 @@
       container.innerHTML = `<div class="empty-state">${message}</div>`;
     }
 
+    // ---------------- Combobox / search ----------------
+    const searchInput = document.getElementById("sprite-search");
+    const comboList = document.getElementById("combobox-list");
+
+    function renderComboList(filter = "") {
+      const term = filter.trim().toLowerCase();
+      const matches = allSprites.filter(s =>
+        s.variant_name.toLowerCase().includes(term)
+      ).slice(0, 30);
+
+      if (matches.length === 0) {
+        comboList.innerHTML = `<div class="combobox-empty">No matching Sprites</div>`;
+      } else {
+        comboList.innerHTML = matches.map(s => `
+          <div class="combobox-item" data-id="${s.id}">
+            ${s.image_url
+              ? `<img src="${s.image_url}" onerror="this.style.display='none'" />`
+              : `<div class="cb-thumb-empty"></div>`}
+            <span>${s.variant_name} (${rarityLabel(s.rarity)})</span>
+          </div>
+        `).join("");
+      }
+      comboList.classList.add("open");
+    }
+
+    comboList.addEventListener("click", (e) => {
+      const item = e.target.closest(".combobox-item");
+      if (!item || !item.dataset.id) return;
+      const sprite = allSprites.find(s => s.id === item.dataset.id);
+      if (!sprite) return;
+      selectedSpriteId = sprite.id;
+      searchInput.value = `${sprite.variant_name} (${rarityLabel(sprite.rarity)})`;
+      comboList.classList.remove("open");
+    });
+
+    searchInput.addEventListener("input", () => {
+      selectedSpriteId = null;
+      renderComboList(searchInput.value);
+    });
+
+    searchInput.addEventListener("focus", () => {
+      renderComboList(searchInput.value);
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!e.target.closest(".combobox")) {
+        comboList.classList.remove("open");
+      }
+    });
+
     async function loadCatalog() {
       const { data, error } = await db
         .from("sprites")
-        .select("id, variant_name, rarity")
+        .select("id, variant_name, rarity, image_url")
         .eq("is_active", true)
         .order("variant_name");
 
-      const select = document.getElementById("sprite-select");
-
-      if (error || !data || data.length === 0) {
-        select.innerHTML = `<option value="">No hay Sprites en el catálogo todavía</option>`;
-        select.disabled = true;
-        document.getElementById("add-owned-btn").disabled = true;
-        document.getElementById("add-wanted-btn").disabled = true;
+      if (error || !data) {
+        searchInput.placeholder = "Couldn't load catalog";
+        searchInput.disabled = true;
         return;
       }
 
       allSprites = data;
-      select.innerHTML = data
-        .map(s => `<option value="${s.id}">${s.variant_name} (${s.rarity})</option>`)
-        .join("");
+      searchInput.disabled = false;
+      searchInput.placeholder = data.length
+        ? "Type to search..."
+        : "No Sprites in the catalog yet";
     }
 
     async function loadOwned() {
@@ -109,11 +206,11 @@
         .eq("user_id", currentUser.id);
 
       if (error) {
-        renderEmpty(grid, "No se pudo cargar tu colección.");
+        renderEmpty(grid, "Couldn't load your collection.");
         return;
       }
       if (!data || data.length === 0) {
-        renderEmpty(grid, "Todavía no marcas ningún Sprite como propio.");
+        renderEmpty(grid, "You haven't marked any Sprites as owned yet.");
         return;
       }
 
@@ -141,11 +238,11 @@
         .eq("user_id", currentUser.id);
 
       if (error) {
-        renderEmpty(grid, "No se pudo cargar tu lista de búsqueda.");
+        renderEmpty(grid, "Couldn't load your wishlist.");
         return;
       }
       if (!data || data.length === 0) {
-        renderEmpty(grid, "Todavía no marcas ningún Sprite como buscado.");
+        renderEmpty(grid, "You haven't marked any Sprites as wanted yet.");
         return;
       }
 
@@ -176,39 +273,37 @@
     });
 
     document.getElementById("add-owned-btn").addEventListener("click", async () => {
-      const spriteId = document.getElementById("sprite-select").value;
-      if (!spriteId) return;
+      if (!selectedSpriteId) return;
       const statusEl = document.getElementById("add-status");
 
       const { error } = await db
         .from("user_sprites_owned")
         .upsert(
-          { user_id: currentUser.id, sprite_id: spriteId, quantity: 1 },
+          { user_id: currentUser.id, sprite_id: selectedSpriteId, quantity: 1 },
           { onConflict: "user_id,sprite_id" }
         );
 
       statusEl.innerHTML = error
         ? `<div class="status-message error">${error.message}</div>`
-        : `<div class="status-message success">Añadido a tu colección.</div>`;
+        : `<div class="status-message success">Added to your collection.</div>`;
 
       loadOwned();
     });
 
     document.getElementById("add-wanted-btn").addEventListener("click", async () => {
-      const spriteId = document.getElementById("sprite-select").value;
-      if (!spriteId) return;
+      if (!selectedSpriteId) return;
       const statusEl = document.getElementById("add-status");
 
       const { error } = await db
         .from("user_sprites_wanted")
         .upsert(
-          { user_id: currentUser.id, sprite_id: spriteId },
+          { user_id: currentUser.id, sprite_id: selectedSpriteId },
           { onConflict: "user_id,sprite_id" }
         );
 
       statusEl.innerHTML = error
         ? `<div class="status-message error">${error.message}</div>`
-        : `<div class="status-message success">Añadido a tu lista de búsqueda.</div>`;
+        : `<div class="status-message success">Added to your wishlist.</div>`;
 
       loadWanted();
     });
