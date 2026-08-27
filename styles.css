@@ -3,7 +3,7 @@
    Tema "Loot Locker": índigo oscuro + acentos por rareza.
    ===================================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Passion+One:wght@400&family=Inter:wght@400;500;600&display=swap');
 
 :root {
   /* Superficies */
@@ -32,7 +32,7 @@
   --error: #ff6b6b;
 
   --radius: 14px;
-  --font-display: 'Anton', sans-serif;
+  --font-display: 'Passion One', sans-serif;
   --font-body: 'Inter', sans-serif;
 }
 
