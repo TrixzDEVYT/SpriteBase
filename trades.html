@@ -75,15 +75,6 @@
     .cards-area.list-view { display: flex; flex-direction: column; gap: 1rem; }
 
     .trade-owner { display: flex; align-items: center; gap: 0.6rem; }
-    .avatar-circle {
-      width: 32px; height: 32px; border-radius: 50%;
-      background: var(--accent);
-      display: flex; align-items: center; justify-content: center;
-      font-family: var(--font-display); font-size: 1rem; color: white;
-      flex-shrink: 0; overflow: hidden;
-    }
-    .avatar-circle img { width: 100%; height: 100%; object-fit: cover; }
-
     .match-badge {
       font-size: 0.7rem; font-weight: 600; padding: 0.15rem 0.5rem;
       border-radius: 999px; background: rgba(139,92,246,0.18); color: var(--accent);
@@ -177,6 +168,11 @@
             <option value="mitico">Mythic</option>
           </select>
 
+          <label for="filter-style">Style</label>
+          <select id="filter-style">
+            <option value="any">Any</option>
+          </select>
+
           <label for="sprite-filter-search">Sprites</label>
           <input type="text" id="sprite-filter-search" placeholder="Search sprite..." />
           <div class="sprite-filter-list" id="sprite-filter-list"></div>
@@ -220,6 +216,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabaseClient.js"></script>
   <script src="profanityFilter.js"></script>
+  <script src="spriteType.js"></script>
   <script src="auth.js"></script>
   <script>
     let currentUser = null;
@@ -227,7 +224,8 @@
     let matchMap = {};        // { ownerUserId: 'full' | 'partial' }
     let allSpritesCatalog = [];
     let selectedSpriteFilterIds = new Set();
-    let appliedFilters = { status: "active", match: "any", rarity: "any", spriteIds: new Set() };
+    let appliedFilters = { status: "active", match: "any", rarity: "any", style: "any", spriteIds: new Set() };
+    let verifiedIds = new Set();
     let viewMode = "grid";
     let currentPage = 1;
     const PAGE_SIZE = 6;
@@ -245,12 +243,10 @@
       return `${Math.floor(diffSec / 86400)}d ago`;
     }
 
-    function avatarHtml(profile) {
-      const initial = (profile?.username || "?").trim().charAt(0).toUpperCase();
-      if (profile?.avatar_url) {
-        return `<div class="avatar-circle"><img src="${profile.avatar_url}" onerror="this.parentElement.innerHTML='${initial}'" /></div>`;
-      }
-      return `<div class="avatar-circle">${initial}</div>`;
+    function verifiedCheck(userId) {
+      return verifiedIds.has(userId)
+        ? `<img src="https://static.vecteezy.com/system/resources/thumbnails/047/309/930/small/verified-badge-profile-icon-png.png" alt="Verified" title="Verified" style="width:16px; height:16px; vertical-align:middle;" />`
+        : "";
     }
 
     function chip(sprite) {
@@ -295,6 +291,11 @@
       });
     }
 
+    async function loadVerifiedIds() {
+      const { data } = await db.from("verified_users").select("user_id");
+      verifiedIds = new Set((data || []).map(r => r.user_id));
+    }
+
     async function loadSpriteCatalogForFilter() {
       const { data } = await db
         .from("sprites")
@@ -303,6 +304,16 @@
         .order("variant_name");
       allSpritesCatalog = data || [];
       renderSpriteFilterList("");
+      populateStyleFilter();
+    }
+
+    function populateStyleFilter() {
+      const styles = new Set(allSpritesCatalog.map(s => getSpriteType(s.variant_name)));
+      const select = document.getElementById("filter-style");
+      const current = select.value;
+      select.innerHTML = `<option value="any">Any</option>` +
+        [...styles].sort().map(s => `<option value="${s}">${s}</option>`).join("");
+      select.value = current || "any";
     }
 
     function renderSpriteFilterList(term) {
@@ -373,6 +384,10 @@
           if (!allItems.some(s => s.rarity === appliedFilters.rarity)) return false;
         }
 
+        if (appliedFilters.style !== "any") {
+          if (!allItems.some(s => getSpriteType(s.variant_name) === appliedFilters.style)) return false;
+        }
+
         if (appliedFilters.spriteIds.size > 0) {
           const itemNamesInTrade = new Set(allItems.map(s => s.variant_name));
           const spriteNamesSelected = [...appliedFilters.spriteIds]
@@ -411,9 +426,8 @@
         <div class="trade-card">
           <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:0.5rem;">
             <div class="trade-owner">
-              ${avatarHtml(trade.profiles)}
               <div>
-                <div style="font-size:0.9rem; font-weight:600;">@${trade.profiles?.username || "user"}${isOwn ? " (you)" : ""}</div>
+                <div style="font-size:0.9rem; font-weight:600;">@${trade.profiles?.username || "user"} ${verifiedCheck(trade.user_id)}${isOwn ? " (you)" : ""}</div>
                 <div style="font-size:0.75rem; color:var(--text-muted);">${timeAgo(trade.created_at)}</div>
               </div>
             </div>
@@ -505,6 +519,7 @@
         status: document.getElementById("filter-status").value,
         match: document.getElementById("filter-match").value,
         rarity: document.getElementById("filter-rarity").value,
+        style: document.getElementById("filter-style").value,
         spriteIds: new Set(selectedSpriteFilterIds),
       };
       currentPage = 1;
@@ -515,10 +530,11 @@
       document.getElementById("filter-status").value = "any";
       document.getElementById("filter-match").value = "any";
       document.getElementById("filter-rarity").value = "any";
+      document.getElementById("filter-style").value = "any";
       selectedSpriteFilterIds.clear();
       document.getElementById("sprite-filter-search").value = "";
       renderSpriteFilterList("");
-      appliedFilters = { status: "any", match: "any", rarity: "any", spriteIds: new Set() };
+      appliedFilters = { status: "any", match: "any", rarity: "any", style: "any", spriteIds: new Set() };
       currentPage = 1;
       renderBrowse();
     });
@@ -755,6 +771,7 @@
 
       await renderNav("trades.html");
       await loadMatchMap();
+      await loadVerifiedIds();
       await loadSpriteCatalogForFilter();
       await loadTrades();
     })();

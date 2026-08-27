@@ -52,6 +52,7 @@
     <div class="tabs">
       <button class="tab active" data-tab="series">Sprite Series</button>
       <button class="tab" data-tab="sprites">Sprites</button>
+      <button class="tab" data-tab="users">Users</button>
     </div>
 
     <!-- =================== SERIES =================== -->
@@ -150,6 +151,7 @@
               <img id="preview-image" src="" style="width:100%; border-radius:8px; display:block;" onerror="this.parentElement.style.display='none'" />
             </div>
             <div class="sprite-card-name" id="preview-name">Sprite name</div>
+            <div id="preview-type" style="font-size:0.8rem; color:var(--text-muted);">Type: Normal</div>
           </div>
         </div>
       </div>
@@ -164,6 +166,7 @@
             <th>Image</th>
             <th>Variant</th>
             <th>Series</th>
+            <th>Type</th>
             <th>Rarity</th>
             <th>Active</th>
             <th>Actions</th>
@@ -172,10 +175,37 @@
         <tbody id="sprites-tbody"></tbody>
       </table>
     </div>
+
+    <!-- =================== USERS (verification) =================== -->
+    <div id="users-section" style="display:none;">
+      <div class="card">
+        <h3 style="margin-bottom: 1rem;">Verify a user</h3>
+        <label for="user-search">Search by username</label>
+        <input type="text" id="user-search" placeholder="Type a username..." />
+        <div id="user-search-results"></div>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top: 1.2rem;">
+        <h3 style="margin:0;">Verified Users</h3>
+        <button class="btn btn-ghost" id="verified-refresh-btn">↻ Refresh</button>
+      </div>
+      <table class="admin-table" id="verified-table">
+        <thead>
+          <tr>
+            <th>Username</th>
+            <th>Verified since</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="verified-tbody"></tbody>
+      </table>
+    </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabaseClient.js"></script>
+  <script src="profanityFilter.js"></script>
+  <script src="spriteType.js"></script>
   <script src="auth.js"></script>
   <script>
     let allSeries = [];
@@ -238,6 +268,7 @@
       badge.textContent = rarityLabel(rarity);
 
       document.getElementById("preview-name").textContent = name;
+      document.getElementById("preview-type").textContent = "Type: " + getSpriteType(name);
 
       const imgWrap = document.getElementById("preview-image-wrap");
       const img = document.getElementById("preview-image");
@@ -259,9 +290,11 @@
       tab.addEventListener("click", () => {
         document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
         tab.classList.add("active");
-        const isSeries = tab.dataset.tab === "series";
-        document.getElementById("series-section").style.display = isSeries ? "block" : "none";
-        document.getElementById("sprites-section").style.display = isSeries ? "none" : "block";
+        const target = tab.dataset.tab;
+        document.getElementById("series-section").style.display = target === "series" ? "block" : "none";
+        document.getElementById("sprites-section").style.display = target === "sprites" ? "block" : "none";
+        document.getElementById("users-section").style.display = target === "users" ? "block" : "none";
+        if (target === "users") loadVerifiedUsers();
       });
     });
 
@@ -346,6 +379,10 @@
         statusEl.innerHTML = `<div class="status-message error">Name and slug are required.</div>`;
         return;
       }
+      if (containsProfanity(name) || containsProfanity(description)) {
+        statusEl.innerHTML = `<div class="status-message error">Please remove inappropriate language.</div>`;
+        return;
+      }
 
       const payload = { name, slug, description: description || null };
       const { error } = id
@@ -378,12 +415,12 @@
       const tbody = document.getElementById("sprites-tbody");
 
       if (error) {
-        tbody.innerHTML = `<tr><td colspan="6">Error: ${error.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7">Error: ${error.message}</td></tr>`;
         return;
       }
 
       if (!data || data.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" style="color:var(--text-muted);">No Sprites yet.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" style="color:var(--text-muted);">No Sprites yet.</td></tr>`;
         return;
       }
 
@@ -396,6 +433,7 @@
           </td>
           <td>${s.variant_name}</td>
           <td>${s.sprite_series?.name || "—"}</td>
+          <td>${getSpriteType(s.variant_name)}</td>
           <td><span class="badge badge-${s.rarity}">${rarityLabel(s.rarity)}</span></td>
           <td>${s.is_active ? "✅" : "—"}</td>
           <td>
@@ -455,6 +493,10 @@
         statusEl.innerHTML = `<div class="status-message error">Variant name and slug are required.</div>`;
         return;
       }
+      if (containsProfanity(variant_name) || containsProfanity(description)) {
+        statusEl.innerHTML = `<div class="status-message error">Please remove inappropriate language.</div>`;
+        return;
+      }
 
       const payload = {
         series_id, rarity, variant_name, slug,
@@ -483,6 +525,108 @@
 
     document.getElementById("series-refresh-btn").addEventListener("click", loadSeries);
     document.getElementById("sprites-refresh-btn").addEventListener("click", loadSprites);
+
+    // ---------------- Users: verificación ----------------
+    let verifiedIds = new Set();
+
+    async function loadVerifiedIds() {
+      const { data } = await db.from("verified_users").select("user_id");
+      verifiedIds = new Set((data || []).map(r => r.user_id));
+    }
+
+    async function loadVerifiedUsers() {
+      await loadVerifiedIds();
+      const tbody = document.getElementById("verified-tbody");
+
+      if (verifiedIds.size === 0) {
+        tbody.innerHTML = `<tr><td colspan="3" style="color:var(--text-muted);">No verified users yet.</td></tr>`;
+        return;
+      }
+
+      const { data, error } = await db
+        .from("verified_users")
+        .select("verified_at, profiles(id, username)")
+        .order("verified_at", { ascending: false });
+
+      if (error) {
+        tbody.innerHTML = `<tr><td colspan="3">Error: ${error.message}</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = data.map(row => `
+        <tr>
+          <td>@${row.profiles?.username || "?"}</td>
+          <td>${new Date(row.verified_at).toLocaleDateString()}</td>
+          <td>
+            <button class="btn btn-ghost unverify-btn" data-id="${row.profiles?.id}">Unverify</button>
+          </td>
+        </tr>
+      `).join("");
+
+      tbody.querySelectorAll(".unverify-btn").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          await db.from("verified_users").delete().eq("user_id", btn.dataset.id);
+          loadVerifiedUsers();
+        });
+      });
+    }
+
+    let userSearchTimeout = null;
+    document.getElementById("user-search").addEventListener("input", (e) => {
+      clearTimeout(userSearchTimeout);
+      const term = e.target.value.trim();
+      userSearchTimeout = setTimeout(() => searchUsers(term), 300);
+    });
+
+    async function searchUsers(term) {
+      const resultsEl = document.getElementById("user-search-results");
+      if (!term) {
+        resultsEl.innerHTML = "";
+        return;
+      }
+
+      const { data, error } = await db
+        .from("profiles")
+        .select("id, username")
+        .ilike("username", `%${term}%`)
+        .limit(10);
+
+      if (error) {
+        resultsEl.innerHTML = `<div class="status-message error">${error.message}</div>`;
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        resultsEl.innerHTML = `<p style="color:var(--text-muted); font-size:0.9rem;">No users found.</p>`;
+        return;
+      }
+
+      await loadVerifiedIds();
+
+      resultsEl.innerHTML = data.map(u => `
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:0.5rem 0; border-bottom:1px solid var(--border);">
+          <span>@${u.username}</span>
+          <button class="btn ${verifiedIds.has(u.id) ? "btn-ghost" : "btn-primary"} verify-toggle-btn" data-id="${u.id}" data-verified="${verifiedIds.has(u.id)}">
+            ${verifiedIds.has(u.id) ? "✓ Verified — Unverify" : "Verify this user"}
+          </button>
+        </div>
+      `).join("");
+
+      resultsEl.querySelectorAll(".verify-toggle-btn").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const isVerified = btn.dataset.verified === "true";
+          if (isVerified) {
+            await db.from("verified_users").delete().eq("user_id", btn.dataset.id);
+          } else {
+            await db.from("verified_users").insert({ user_id: btn.dataset.id });
+          }
+          searchUsers(document.getElementById("user-search").value.trim());
+          loadVerifiedUsers();
+        });
+      });
+    }
+
+    document.getElementById("verified-refresh-btn").addEventListener("click", loadVerifiedUsers);
 
     (async () => {
       const user = await requireAdmin();

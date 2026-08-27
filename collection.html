@@ -81,6 +81,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabaseClient.js"></script>
+  <script src="spriteType.js"></script>
   <script src="auth.js"></script>
   <script>
     let currentUser = null;
@@ -112,6 +113,7 @@
           ? `<img src="${sprite.image_url}" style="width:100%; aspect-ratio:1; object-fit:cover; border-radius:10px; margin-top:0.6rem;" onerror="this.style.display='none'" />`
           : ""}
         <div class="sprite-card-name">${sprite.variant_name}</div>
+        <div style="font-size:0.78rem; color: var(--text-muted); margin-top:-0.2rem;">${getSpriteType(sprite.variant_name)}</div>
       `;
       if (removable) {
         const btn = document.createElement("button");
