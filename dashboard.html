@@ -5,6 +5,48 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SpriteBase — Dashboard</title>
   <link rel="stylesheet" href="styles.css" />
+  <style>
+    .news-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-bottom: 1rem;
+    }
+    .news-card-image {
+      width: 100%;
+      max-height: 240px;
+      object-fit: cover;
+      display: block;
+    }
+    .news-card-body { padding: 1.2rem 1.4rem; }
+    .news-card-title {
+      font-family: var(--font-display);
+      font-size: 1.25rem;
+      margin: 0;
+    }
+    .news-card-date {
+      color: var(--text-muted);
+      font-size: 0.78rem;
+      margin-top: 0.2rem;
+    }
+    .news-card-text {
+      font-size: 0.92rem;
+      color: var(--text-muted);
+      margin-top: 0.8rem;
+      line-height: 1.5;
+    }
+    .section-heading {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin: 2rem 0 1rem;
+      font-family: var(--font-display);
+      font-size: 1.3rem;
+    }
+    .section-heading:first-of-type { margin-top: 0; }
+  </style>
 </head>
 <body>
   <div id="site-header"></div>
@@ -14,8 +56,6 @@
       <h1 id="welcome-title">Welcome</h1>
       <p>Here's your SpriteBase summary.</p>
     </div>
-
-    <div id="news-feed" style="margin-bottom: 1.5rem;"></div>
 
     <div class="stats-grid">
       <div class="stat-card">
@@ -58,6 +98,20 @@
       <div id="contact-status"></div>
       <button class="btn btn-primary" id="save-contact-btn">Save</button>
     </div>
+
+    <div class="section-heading">📰 Latest News</div>
+    <div id="news-feed"></div>
+
+    <div class="section-heading">💬 Support</div>
+    <div class="card">
+      <p style="margin-top:0; color: var(--text-muted);">
+        Found a bug, or have feedback or a question about SpriteBase? Reach out on Discord.
+      </p>
+      <div style="display:flex; gap: 0.8rem; flex-wrap: wrap;">
+        <a href="https://ko-fi.com/tryxie" target="_blank" rel="noopener" class="btn btn-primary">☕ Support on Ko-fi</a>
+        <span class="btn btn-ghost" style="cursor:default;">🎮 Discord: tryxie.txt</span>
+      </div>
+    </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -82,33 +136,6 @@
       document.getElementById("contact-type").value = profile?.contact_type || "discord";
       document.getElementById("contact-input").value = profile?.contact_value || "";
 
-      // Noticias
-      const { data: newsItems } = await db
-        .from("news")
-        .select("id, title, body, image_url, created_at")
-        .eq("is_published", true)
-        .order("created_at", { ascending: false })
-        .limit(5);
-
-      const feedEl = document.getElementById("news-feed");
-      if (newsItems && newsItems.length > 0) {
-        const escapeHtml = (str) => {
-          const div = document.createElement("div");
-          div.textContent = str;
-          return div.innerHTML;
-        };
-        feedEl.innerHTML = newsItems.map(n => `
-          <div class="card" style="margin-bottom: 0.8rem;">
-            ${n.image_url ? `<img src="${n.image_url}" style="width:100%; max-height:220px; object-fit:cover; border-radius:10px; margin-bottom:0.8rem;" onerror="this.style.display='none'" />` : ""}
-            <div style="display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:0.4rem;">
-              <div style="font-family: var(--font-display); font-size:1.1rem;">${escapeHtml(n.title)}</div>
-              <div style="color:var(--text-muted); font-size:0.78rem;">${new Date(n.created_at).toLocaleDateString()}</div>
-            </div>
-            <div style="font-size:0.9rem; color:var(--text-muted); margin-top:0.4rem;">${escapeHtml(n.body).replace(/\n/g, "<br>")}</div>
-          </div>
-        `).join("");
-      }
-
       document.getElementById("save-contact-btn").addEventListener("click", async () => {
         const statusEl = document.getElementById("contact-status");
         const type = document.getElementById("contact-type").value;
@@ -126,6 +153,38 @@
           ? `<div class="status-message error">${error.message}</div>`
           : `<div class="status-message success">Saved.</div>`;
       });
+
+      // Noticias
+      const { data: newsItems } = await db
+        .from("news")
+        .select("id, title, body, image_url, created_at")
+        .eq("is_published", true)
+        .order("created_at", { ascending: false })
+        .limit(5);
+
+      const escapeHtml = (str) => {
+        const div = document.createElement("div");
+        div.textContent = str;
+        return div.innerHTML;
+      };
+
+      const feedEl = document.getElementById("news-feed");
+      if (newsItems && newsItems.length > 0) {
+        feedEl.innerHTML = newsItems.map(n => `
+          <div class="news-card">
+            ${n.image_url ? `<img src="${n.image_url}" class="news-card-image" onerror="this.style.display='none'" />` : ""}
+            <div class="news-card-body">
+              <div style="display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:0.4rem;">
+                <h4 class="news-card-title">${escapeHtml(n.title)}</h4>
+              </div>
+              <div class="news-card-date">${new Date(n.created_at).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}</div>
+              <div class="news-card-text">${escapeHtml(n.body).replace(/\n/g, "<br>")}</div>
+            </div>
+          </div>
+        `).join("");
+      } else {
+        feedEl.innerHTML = `<div class="empty-state">No news yet — check back soon!</div>`;
+      }
 
       const [{ count: ownedCount }, { count: wantedCount }, { count: tradesCount }] =
         await Promise.all([
