@@ -83,6 +83,35 @@
     .chip-row { display: flex; gap: 0.4rem; overflow-x: auto; padding-bottom: 0.3rem; }
     .chip-row .chip { flex-shrink: 0; }
 
+    .trade-columns-visual {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 0.8rem;
+      align-items: center;
+    }
+    .swap-icon {
+      width: 34px; height: 34px; border-radius: 50%;
+      background: var(--bg); border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text-muted); font-size: 1rem; flex-shrink: 0;
+    }
+    .item-slots-row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .item-slot {
+      width: 52px; height: 52px; border-radius: 10px;
+      background: var(--bg); border: 2px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden; flex-shrink: 0; position: relative;
+    }
+    .item-slot img { width: 100%; height: 100%; object-fit: cover; }
+    .item-slot .placeholder { font-size: 1.3rem; color: var(--text-muted); }
+
+    .contact-reveal {
+      margin-top: 0.6rem; padding: 0.6rem 0.8rem;
+      background: var(--bg); border-radius: 8px; font-size: 0.85rem;
+      color: var(--text-muted); display: none;
+    }
+    .contact-reveal.open { display: block; }
+
     .details-panel {
       display: none;
       border-top: 1px solid var(--border);
@@ -201,10 +230,16 @@
         <label for="trade-description">Description (optional)</label>
         <textarea id="trade-description" placeholder="Additional details about your offer..." maxlength="2000"></textarea>
 
-        <label>Offering (from your collection)</label>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <label style="margin:0;">Offering (from your collection)</label>
+          <button class="btn btn-ghost" id="select-all-offer-btn" style="padding:0.25rem 0.6rem; font-size:0.8rem;">Select all</button>
+        </div>
         <div id="offer-checkboxes" class="card" style="background: var(--bg); margin-bottom:1.1rem;"></div>
 
-        <label>Looking for</label>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <label style="margin:0;">Looking for</label>
+          <button class="btn btn-ghost" id="select-all-want-btn" style="padding:0.25rem 0.6rem; font-size:0.8rem;">Select all</button>
+        </div>
         <div id="want-checkboxes" class="card" style="background: var(--bg); margin-bottom:1.1rem;"></div>
 
         <div id="create-status"></div>
@@ -249,11 +284,37 @@
         : "";
     }
 
+    const PLATFORM_ICONS = {
+      discord: "🎮 Discord",
+      twitter: "🐦 Twitter / X",
+      instagram: "📷 Instagram",
+      email: "✉️ Email",
+      other: "🔗 Contact",
+    };
+
     function chip(sprite) {
       const thumb = sprite.image_url
         ? `<img src="${sprite.image_url}" style="width:16px; height:16px; object-fit:cover; border-radius:4px; vertical-align:middle; margin-right:0.35rem;" onerror="this.style.display='none'" />`
         : "";
       return `<span class="chip">${thumb}${sprite.variant_name}</span>`;
+    }
+
+    const RARITY_VAR = {
+      common: "--rarity-common", raro: "--rarity-rare", epico: "--rarity-epic",
+      legendario: "--rarity-legendary", mitico: "--rarity-mythic",
+    };
+
+    function itemSlot(sprite) {
+      const borderColor = `var(${RARITY_VAR[sprite.rarity] || "--border"})`;
+      const inner = sprite.image_url
+        ? `<img src="${sprite.image_url}" onerror="this.parentElement.innerHTML='<span class=\\'placeholder\\'>❔</span>'" />`
+        : `<span class="placeholder">❔</span>`;
+      return `<div class="item-slot" style="border-color:${borderColor};" title="${sprite.variant_name} (${RARITY_LABELS[sprite.rarity] || sprite.rarity})">${inner}</div>`;
+    }
+
+    function itemSlotsRow(sprites) {
+      if (!sprites.length) return `<span style="color:var(--text-muted); font-size:0.85rem;">—</span>`;
+      return `<div class="item-slots-row">${sprites.map(itemSlot).join("")}</div>`;
     }
 
     // ---------------- Navegación entre vistas ----------------
@@ -349,7 +410,7 @@
         .from("trades")
         .select(`
           id, title, description, status, created_at, user_id,
-          profiles ( username, avatar_url ),
+          profiles ( username, avatar_url, contact_type, contact_value ),
           trade_offer_items ( sprites ( variant_name, rarity, image_url ) ),
           trade_want_items ( sprites ( variant_name, rarity, image_url ) )
         `)
@@ -417,10 +478,12 @@
     }
 
     function tradeCardHtml(trade) {
-      const offerChips = trade.trade_offer_items.map(i => chip(i.sprites)).join("") || "—";
-      const wantChips = trade.trade_want_items.map(i => chip(i.sprites)).join("") || "—";
       const match = matchMap[trade.user_id];
       const isOwn = trade.user_id === currentUser.id;
+      const offerSprites = trade.trade_offer_items.map(i => i.sprites);
+      const wantSprites = trade.trade_want_items.map(i => i.sprites);
+      const contactValue = trade.profiles?.contact_value;
+      const contactLabel = PLATFORM_ICONS[trade.profiles?.contact_type] || "🔗 Contact";
 
       return `
         <div class="trade-card">
@@ -439,21 +502,32 @@
 
           <div class="trade-card-title" style="margin-top:0.6rem;">${trade.title}</div>
 
-          <div class="trade-columns">
+          <div class="trade-columns-visual">
             <div>
               <div class="trade-col-label">Offering</div>
-              <div class="chip-row">${offerChips}</div>
+              ${itemSlotsRow(offerSprites)}
             </div>
+            <div class="swap-icon">⇄</div>
             <div>
               <div class="trade-col-label">Looking for</div>
-              <div class="chip-row">${wantChips}</div>
+              ${itemSlotsRow(wantSprites)}
             </div>
           </div>
 
-          <button class="btn btn-ghost view-details-btn" style="align-self:flex-start; padding:0.4rem 0.8rem;">👁 View Details</button>
+          <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+            <button class="btn btn-ghost view-details-btn" style="padding:0.4rem 0.8rem;">👁 View Details</button>
+            ${!isOwn ? `<button class="btn btn-ghost contact-btn" style="padding:0.4rem 0.8rem;">💬 Contact</button>` : ""}
+          </div>
           <div class="details-panel">
             ${trade.description ? `<p style="margin:0 0 0.6rem;">${trade.description}</p>` : `<p style="margin:0 0 0.6rem;">No additional description.</p>`}
+            <p style="margin:0 0 0.4rem;"><strong>Offering:</strong> ${offerSprites.map(s => s.variant_name).join(", ") || "—"}</p>
+            <p style="margin:0 0 0.4rem;"><strong>Looking for:</strong> ${wantSprites.map(s => s.variant_name).join(", ") || "—"}</p>
             <p style="margin:0;">Posted ${new Date(trade.created_at).toLocaleDateString()}</p>
+          </div>
+          <div class="contact-reveal">
+            ${contactValue
+              ? `${contactLabel}: <strong style="color:var(--text);">${contactValue}</strong>`
+              : `This user hasn't shared any contact info yet.`}
           </div>
         </div>
       `;
@@ -477,8 +551,16 @@
 
       area.querySelectorAll(".view-details-btn").forEach(btn => {
         btn.addEventListener("click", () => {
-          const panel = btn.nextElementSibling;
-          panel.style.display = panel.style.display === "block" ? "none" : "block";
+          const panel = btn.closest(".trade-card").querySelector(".details-panel");
+          panel.classList.toggle("open");
+          panel.style.display = panel.classList.contains("open") ? "block" : "none";
+        });
+      });
+
+      area.querySelectorAll(".contact-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const reveal = btn.closest(".trade-card").querySelector(".contact-reveal");
+          reveal.classList.toggle("open");
         });
       });
 
@@ -579,8 +661,8 @@
 
       list.innerHTML = "";
       data.forEach(trade => {
-        const offerChips = trade.trade_offer_items.map(i => chip(i.sprites)).join("") || "—";
-        const wantChips = trade.trade_want_items.map(i => chip(i.sprites)).join("") || "—";
+        const offerSprites = trade.trade_offer_items.map(i => i.sprites);
+        const wantSprites = trade.trade_want_items.map(i => i.sprites);
         const isActive = trade.status === "active";
         const isCancelled = trade.status === "cancelled";
 
@@ -595,14 +677,15 @@
             <span style="color:var(--text-muted); font-size:0.75rem;">${timeAgo(trade.created_at)}</span>
           </div>
           ${trade.description ? `<p style="color: var(--text-muted); font-size:0.9rem; margin:0;">${trade.description}</p>` : ""}
-          <div class="trade-columns">
+          <div class="trade-columns-visual">
             <div>
               <div class="trade-col-label">Offering</div>
-              <div class="chip-row">${offerChips}</div>
+              ${itemSlotsRow(offerSprites)}
             </div>
+            <div class="swap-icon">⇄</div>
             <div>
               <div class="trade-col-label">Looking for</div>
-              <div class="chip-row">${wantChips}</div>
+              ${itemSlotsRow(wantSprites)}
             </div>
           </div>
           <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
@@ -711,6 +794,18 @@
             </label>`).join("")
         : `<p style="color: var(--text-muted); margin:0;">Add Sprites to your wishlist first.</p>`;
     }
+
+    document.getElementById("select-all-offer-btn").addEventListener("click", () => {
+      const boxes = document.querySelectorAll(".offer-check");
+      const allChecked = [...boxes].every(c => c.checked);
+      boxes.forEach(c => c.checked = !allChecked);
+    });
+
+    document.getElementById("select-all-want-btn").addEventListener("click", () => {
+      const boxes = document.querySelectorAll(".want-check");
+      const allChecked = [...boxes].every(c => c.checked);
+      boxes.forEach(c => c.checked = !allChecked);
+    });
 
     document.getElementById("create-trade-btn").addEventListener("click", async () => {
       const statusEl = document.getElementById("create-status");
