@@ -15,6 +15,8 @@
       <p>Here's your SpriteBase summary.</p>
     </div>
 
+    <div id="news-feed" style="margin-bottom: 1.5rem;"></div>
+
     <div class="stats-grid">
       <div class="stat-card">
         <div class="stat-value" id="stat-owned">—</div>
@@ -37,6 +39,17 @@
         <a href="trades.html" class="btn btn-ghost">View trades</a>
       </div>
     </div>
+
+    <div class="card" style="margin-top: 1.5rem;">
+      <h3 style="margin-bottom: 0.4rem;">Contact info</h3>
+      <p style="color: var(--text-muted); font-size: 0.88rem; margin-top:0; margin-bottom: 1rem;">
+        Shown to other users on your trades so they can reach you (Discord, etc). Leave blank to hide it.
+      </p>
+      <label for="contact-input">Discord, etc.</label>
+      <input type="text" id="contact-input" placeholder="username" maxlength="100" />
+      <div id="contact-status"></div>
+      <button class="btn btn-primary" id="save-contact-btn">Save</button>
+    </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -51,12 +64,54 @@
 
       const { data: profile } = await db
         .from("profiles")
-        .select("username")
+        .select("username, contact_info")
         .eq("id", user.id)
         .maybeSingle();
 
       document.getElementById("welcome-title").textContent =
         "Welcome, " + (profile?.username || "back");
+
+      document.getElementById("contact-input").value = profile?.contact_info || "";
+
+      // Noticias
+      const { data: newsItems } = await db
+        .from("news")
+        .select("id, title, body, created_at")
+        .eq("is_published", true)
+        .order("created_at", { ascending: false })
+        .limit(5);
+
+      const feedEl = document.getElementById("news-feed");
+      if (newsItems && newsItems.length > 0) {
+        const escapeHtml = (str) => {
+          const div = document.createElement("div");
+          div.textContent = str;
+          return div.innerHTML;
+        };
+        feedEl.innerHTML = newsItems.map(n => `
+          <div class="card" style="margin-bottom: 0.8rem;">
+            <div style="display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:0.4rem;">
+              <div style="font-family: var(--font-display); font-size:1.1rem;">${escapeHtml(n.title)}</div>
+              <div style="color:var(--text-muted); font-size:0.78rem;">${new Date(n.created_at).toLocaleDateString()}</div>
+            </div>
+            <div style="font-size:0.9rem; color:var(--text-muted); margin-top:0.4rem;">${escapeHtml(n.body).replace(/\n/g, "<br>")}</div>
+          </div>
+        `).join("");
+      }
+
+      document.getElementById("save-contact-btn").addEventListener("click", async () => {
+        const statusEl = document.getElementById("contact-status");
+        const value = document.getElementById("contact-input").value.trim();
+
+        const { error } = await db
+          .from("profiles")
+          .update({ contact_info: value || null })
+          .eq("id", user.id);
+
+        statusEl.innerHTML = error
+          ? `<div class="status-message error">${error.message}</div>`
+          : `<div class="status-message success">Saved.</div>`;
+      });
 
       const [{ count: ownedCount }, { count: wantedCount }, { count: tradesCount }] =
         await Promise.all([

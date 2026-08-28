@@ -53,6 +53,7 @@
       <button class="tab active" data-tab="series">Sprite Series</button>
       <button class="tab" data-tab="sprites">Sprites</button>
       <button class="tab" data-tab="users">Users</button>
+      <button class="tab" data-tab="news">News</button>
     </div>
 
     <!-- =================== SERIES =================== -->
@@ -200,6 +201,54 @@
         <tbody id="verified-tbody"></tbody>
       </table>
     </div>
+
+    <!-- =================== NEWS =================== -->
+    <div id="news-section" style="display:none;">
+      <div class="card" style="display:flex; gap:1.5rem; align-items:flex-start; flex-wrap: wrap;">
+        <div style="flex: 2; min-width: 280px;">
+          <h3 style="margin-bottom: 1rem;" id="news-form-title">New post</h3>
+          <input type="hidden" id="news-id" />
+          <label for="news-title">Title</label>
+          <input type="text" id="news-title" placeholder="New Sprites added!" maxlength="150" />
+          <label for="news-body">Body</label>
+          <textarea id="news-body" placeholder="Write the announcement here..." style="min-height:140px;" maxlength="5000"></textarea>
+          <label style="display:flex; align-items:center; gap:0.5rem; font-weight:400;">
+            <input type="checkbox" id="news-published" checked style="width:auto; margin:0;" />
+            Published (visible on Dashboard)
+          </label>
+          <div id="news-status" style="margin-top:0.8rem;"></div>
+          <div style="display:flex; gap:0.6rem; margin-top:0.5rem;">
+            <button class="btn btn-primary" id="news-save-btn">Save post</button>
+            <button class="btn btn-ghost" id="news-cancel-btn" style="display:none;">Cancel edit</button>
+          </div>
+        </div>
+
+        <div style="flex: 1; min-width: 240px;">
+          <label style="margin-bottom: 0.5rem;">Preview</label>
+          <div class="card" style="background: var(--bg);">
+            <div style="font-family: var(--font-display); font-size:1.2rem;" id="news-preview-title">Post title</div>
+            <div style="color:var(--text-muted); font-size:0.8rem; margin:0.3rem 0 0.8rem;" id="news-preview-date">Just now</div>
+            <div style="font-size:0.9rem; white-space:pre-wrap;" id="news-preview-body">Post body will appear here...</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top: 1.2rem;">
+        <h3 style="margin:0;">All Posts</h3>
+        <button class="btn btn-ghost" id="news-refresh-btn">↻ Refresh</button>
+      </div>
+      <table class="admin-table" id="news-table">
+        <thead>
+          <tr>
+            <th>Title</th>
+            <th>Published</th>
+            <th>Date</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="news-tbody"></tbody>
+      </table>
+    </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -294,7 +343,9 @@
         document.getElementById("series-section").style.display = target === "series" ? "block" : "none";
         document.getElementById("sprites-section").style.display = target === "sprites" ? "block" : "none";
         document.getElementById("users-section").style.display = target === "users" ? "block" : "none";
+        document.getElementById("news-section").style.display = target === "news" ? "block" : "none";
         if (target === "users") loadVerifiedUsers();
+        if (target === "news") loadNewsPosts();
       });
     });
 
@@ -627,6 +678,126 @@
     }
 
     document.getElementById("verified-refresh-btn").addEventListener("click", loadVerifiedUsers);
+
+    // ---------------- News ----------------
+    function escapeHtml(str) {
+      const div = document.createElement("div");
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    function updateNewsPreview() {
+      const title = document.getElementById("news-title").value.trim() || "Post title";
+      const body = document.getElementById("news-body").value.trim() || "Post body will appear here...";
+      document.getElementById("news-preview-title").textContent = title;
+      document.getElementById("news-preview-body").innerHTML = escapeHtml(body).replace(/\n/g, "<br>");
+    }
+    ["news-title", "news-body"].forEach(id => {
+      document.getElementById(id).addEventListener("input", updateNewsPreview);
+    });
+
+    function resetNewsForm() {
+      document.getElementById("news-id").value = "";
+      document.getElementById("news-title").value = "";
+      document.getElementById("news-body").value = "";
+      document.getElementById("news-published").checked = true;
+      document.getElementById("news-form-title").textContent = "New post";
+      document.getElementById("news-cancel-btn").style.display = "none";
+      updateNewsPreview();
+    }
+
+    document.getElementById("news-cancel-btn").addEventListener("click", resetNewsForm);
+
+    async function loadNewsPosts() {
+      const { data, error } = await db
+        .from("news")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      const tbody = document.getElementById("news-tbody");
+
+      if (error) {
+        tbody.innerHTML = `<tr><td colspan="4">Error: ${error.message}</td></tr>`;
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" style="color:var(--text-muted);">No posts yet.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = data.map(n => `
+        <tr>
+          <td>${n.title}</td>
+          <td>${n.is_published ? "✅" : "—"}</td>
+          <td>${new Date(n.created_at).toLocaleDateString()}</td>
+          <td>
+            <div class="inline-actions">
+              <button class="btn btn-ghost" onclick='editNews(${JSON.stringify(n).replace(/'/g, "&apos;")})'>Edit</button>
+              <button class="btn btn-ghost" onclick="toggleNewsPublished('${n.id}', ${n.is_published})">
+                ${n.is_published ? "Unpublish" : "Publish"}
+              </button>
+              <button class="btn btn-danger" onclick="deleteNews('${n.id}')">Delete</button>
+            </div>
+          </td>
+        </tr>
+      `).join("");
+    }
+
+    window.editNews = (n) => {
+      document.getElementById("news-id").value = n.id;
+      document.getElementById("news-title").value = n.title;
+      document.getElementById("news-body").value = n.body;
+      document.getElementById("news-published").checked = n.is_published;
+      document.getElementById("news-form-title").textContent = "Edit post";
+      document.getElementById("news-cancel-btn").style.display = "inline-flex";
+      updateNewsPreview();
+    };
+
+    window.toggleNewsPublished = async (id, current) => {
+      await db.from("news").update({ is_published: !current }).eq("id", id);
+      loadNewsPosts();
+    };
+
+    window.deleteNews = async (id) => {
+      if (!confirm("Delete this post? This can't be undone.")) return;
+      await db.from("news").delete().eq("id", id);
+      loadNewsPosts();
+    };
+
+    document.getElementById("news-save-btn").addEventListener("click", async () => {
+      const statusEl = document.getElementById("news-status");
+      const id = document.getElementById("news-id").value;
+      const title = document.getElementById("news-title").value.trim();
+      const body = document.getElementById("news-body").value.trim();
+      const is_published = document.getElementById("news-published").checked;
+
+      if (title.length < 3 || body.length < 1) {
+        statusEl.innerHTML = `<div class="status-message error">Title and body are required.</div>`;
+        return;
+      }
+      if (containsProfanity(title) || containsProfanity(body)) {
+        statusEl.innerHTML = `<div class="status-message error">Please remove inappropriate language.</div>`;
+        return;
+      }
+
+      const payload = { title, body, is_published };
+      const { error } = id
+        ? await db.from("news").update(payload).eq("id", id)
+        : await db.from("news").insert(payload);
+
+      if (error) {
+        statusEl.innerHTML = `<div class="status-message error">${error.message}</div>`;
+        return;
+      }
+
+      statusEl.innerHTML = `<div class="status-message success">Saved.</div>`;
+      resetNewsForm();
+      loadNewsPosts();
+    });
+
+    document.getElementById("news-refresh-btn").addEventListener("click", loadNewsPosts);
+    updateNewsPreview();
 
     (async () => {
       const user = await requireAdmin();
