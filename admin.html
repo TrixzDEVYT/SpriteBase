@@ -212,6 +212,8 @@
           <input type="text" id="news-title" placeholder="New Sprites added!" maxlength="150" />
           <label for="news-body">Body</label>
           <textarea id="news-body" placeholder="Write the announcement here..." style="min-height:140px;" maxlength="5000"></textarea>
+          <label for="news-image">Image URL (optional)</label>
+          <input type="text" id="news-image" placeholder="https://..." />
           <label style="display:flex; align-items:center; gap:0.5rem; font-weight:400;">
             <input type="checkbox" id="news-published" checked style="width:auto; margin:0;" />
             Published (visible on Dashboard)
@@ -226,6 +228,9 @@
         <div style="flex: 1; min-width: 240px;">
           <label style="margin-bottom: 0.5rem;">Preview</label>
           <div class="card" style="background: var(--bg);">
+            <div id="news-preview-image-wrap" style="display:none; margin-bottom:0.8rem;">
+              <img id="news-preview-image" src="" style="width:100%; border-radius:8px; display:block;" onerror="this.parentElement.style.display='none'" />
+            </div>
             <div style="font-family: var(--font-display); font-size:1.2rem;" id="news-preview-title">Post title</div>
             <div style="color:var(--text-muted); font-size:0.8rem; margin:0.3rem 0 0.8rem;" id="news-preview-date">Just now</div>
             <div style="font-size:0.9rem; white-space:pre-wrap;" id="news-preview-body">Post body will appear here...</div>
@@ -689,10 +694,20 @@
     function updateNewsPreview() {
       const title = document.getElementById("news-title").value.trim() || "Post title";
       const body = document.getElementById("news-body").value.trim() || "Post body will appear here...";
+      const imageUrl = document.getElementById("news-image").value.trim();
       document.getElementById("news-preview-title").textContent = title;
       document.getElementById("news-preview-body").innerHTML = escapeHtml(body).replace(/\n/g, "<br>");
+
+      const imgWrap = document.getElementById("news-preview-image-wrap");
+      const img = document.getElementById("news-preview-image");
+      if (imageUrl) {
+        img.src = imageUrl;
+        imgWrap.style.display = "block";
+      } else {
+        imgWrap.style.display = "none";
+      }
     }
-    ["news-title", "news-body"].forEach(id => {
+    ["news-title", "news-body", "news-image"].forEach(id => {
       document.getElementById(id).addEventListener("input", updateNewsPreview);
     });
 
@@ -700,6 +715,7 @@
       document.getElementById("news-id").value = "";
       document.getElementById("news-title").value = "";
       document.getElementById("news-body").value = "";
+      document.getElementById("news-image").value = "";
       document.getElementById("news-published").checked = true;
       document.getElementById("news-form-title").textContent = "New post";
       document.getElementById("news-cancel-btn").style.display = "none";
@@ -748,6 +764,7 @@
       document.getElementById("news-id").value = n.id;
       document.getElementById("news-title").value = n.title;
       document.getElementById("news-body").value = n.body;
+      document.getElementById("news-image").value = n.image_url || "";
       document.getElementById("news-published").checked = n.is_published;
       document.getElementById("news-form-title").textContent = "Edit post";
       document.getElementById("news-cancel-btn").style.display = "inline-flex";
@@ -770,6 +787,7 @@
       const id = document.getElementById("news-id").value;
       const title = document.getElementById("news-title").value.trim();
       const body = document.getElementById("news-body").value.trim();
+      const image_url = document.getElementById("news-image").value.trim();
       const is_published = document.getElementById("news-published").checked;
 
       if (title.length < 3 || body.length < 1) {
@@ -781,7 +799,7 @@
         return;
       }
 
-      const payload = { title, body, is_published };
+      const payload = { title, body, image_url: image_url || null, is_published };
       const { error } = id
         ? await db.from("news").update(payload).eq("id", id)
         : await db.from("news").insert(payload);
