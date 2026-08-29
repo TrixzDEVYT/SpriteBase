@@ -1,15 +1,22 @@
 // =====================================================================
 // auth.js — lógica compartida de sesión, login/signup y navegación.
 // Se incluye en TODAS las páginas después de supabaseClient.js.
+//
+// LOGIN SOLO CON USERNAME:
+// Supabase Auth requiere internamente un "email" por cuenta, pero no
+// tiene que ser real. Generamos uno sintético al registrarse
+// (user-<uuid>@spritebase.local) y lo guardamos en profiles.login_email
+// para poder traducir username -> email interno al iniciar sesión.
+// Ese email NUNCA se usa para enviar nada ni se le muestra al usuario.
 // =====================================================================
 
+function makeSyntheticEmail() {
+  return `user-${crypto.randomUUID()}@spritebase.local`;
+}
+
 /**
- * Obtiene la sesión de forma robusta. db.auth.getSession() a veces
- * responde "sin sesión" en el instante justo en que el cliente todavía
- * está restaurando la sesión guardada (localStorage), causando
- * redirecciones falsas al login. Si el primer intento da null, espera
- * un evento de auth (o un timeout corto) antes de decidir que de
- * verdad no hay sesión.
+ * Obtiene la sesión de forma robusta (evita falsos negativos por
+ * timing al restaurar la sesión guardada).
  */
 async function getSessionRobust() {
   const { data: { session } } = await db.auth.getSession();
@@ -29,7 +36,6 @@ async function getSessionRobust() {
 
 /**
  * Dibuja la barra de navegación dentro de <div id="site-header"></div>.
- * Cambia según si hay sesión activa o no.
  */
 async function renderNav(activePage) {
   const el = document.getElementById("site-header");
@@ -56,6 +62,8 @@ async function renderNav(activePage) {
     links.push({ href: "admin.html", label: "Admin" });
   }
 
+  links.push({ href: "profile.html", label: "Profile" });
+
   const linksHtml = links.map(l =>
     `<a href="${l.href}" class="${activePage === l.href ? 'active' : ''}">${l.label}</a>`
   ).join("");
@@ -65,21 +73,11 @@ async function renderNav(activePage) {
       <div class="nav-brand">Sprite<span>Base</span></div>
       <div class="nav-links">
         ${linksHtml}
-        <button class="btn btn-ghost" id="logout-btn" style="padding:0.4rem 0.9rem;">Log out</button>
       </div>
     </nav>
   `;
-
-  document.getElementById("logout-btn").addEventListener("click", async () => {
-    await db.auth.signOut();
-    window.location.href = "index.html";
-  });
 }
 
-/**
- * Protege una página: si no hay sesión, redirige al login.
- * Llamar al inicio de dashboard.html, collection.html, trades.html.
- */
 async function requireAuth() {
   const session = await getSessionRobust();
   if (!session) {
@@ -89,10 +87,6 @@ async function requireAuth() {
   return session.user;
 }
 
-/**
- * Si YA hay sesión y el usuario visita el login, lo manda al dashboard.
- * Llamar al inicio de index.html.
- */
 async function redirectIfLoggedIn() {
   const session = await getSessionRobust();
   if (session) {
@@ -100,27 +94,49 @@ async function redirectIfLoggedIn() {
   }
 }
 
-async function signUp(email, password, username) {
-  // El username se manda como metadata; el trigger handle_new_user()
-  // en la base de datos crea la fila en profiles automáticamente,
-  // sin depender de que haya sesión activa en este momento.
+/**
+ * Registra una cuenta nueva usando solo username + password.
+ * Revisa disponibilidad del username primero para dar un mensaje claro
+ * en vez de un error genérico de base de datos.
+ */
+async function signUp(username, password) {
+  const { data: existing } = await db
+    .from("profiles")
+    .select("id")
+    .ilike("username", username)
+    .maybeSingle();
+
+  if (existing) {
+    return { error: { message: "That username is already taken." } };
+  }
+
+  const syntheticEmail = makeSyntheticEmail();
   const { data, error } = await db.auth.signUp({
-    email,
+    email: syntheticEmail,
     password,
     options: { data: { username } },
   });
   return { data, error };
 }
 
-async function signIn(email, password) {
-  return await db.auth.signInWithPassword({ email, password });
+/**
+ * Inicia sesión buscando primero el login_email interno asociado al
+ * username, y usándolo para autenticar contra Supabase.
+ */
+async function signIn(username, password) {
+  const { data: profile, error: lookupError } = await db
+    .from("profiles")
+    .select("login_email")
+    .ilike("username", username)
+    .maybeSingle();
+
+  if (lookupError || !profile || !profile.login_email) {
+    return { error: { message: "Username not found." } };
+  }
+
+  return await db.auth.signInWithPassword({ email: profile.login_email, password });
 }
 
-/**
- * Verifica si el usuario dado tiene rol admin, consultando user_roles.
- * La policy de select permite: auth.uid() = user_id OR is_admin(),
- * así que un usuario normal SÍ puede leer su propia fila.
- */
 async function checkIsAdmin(userId) {
   const { data } = await db
     .from("user_roles")
@@ -130,10 +146,6 @@ async function checkIsAdmin(userId) {
   return data?.role === "admin";
 }
 
-/**
- * Protege admin.html: exige sesión Y rol admin. Si no es admin,
- * lo regresa al dashboard.
- */
 async function requireAdmin() {
   const user = await requireAuth();
   if (!user) return null;

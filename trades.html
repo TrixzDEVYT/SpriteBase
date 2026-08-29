@@ -312,9 +312,14 @@
       return `<div class="item-slot" style="border-color:${borderColor};" title="${sprite.variant_name} (${RARITY_LABELS[sprite.rarity] || sprite.rarity})">${inner}</div>`;
     }
 
-    function itemSlotsRow(sprites) {
+    function itemSlotsRow(sprites, max = 8) {
       if (!sprites.length) return `<span style="color:var(--text-muted); font-size:0.85rem;">—</span>`;
-      return `<div class="item-slots-row">${sprites.map(itemSlot).join("")}</div>`;
+      const shown = sprites.slice(0, max);
+      const extra = sprites.length - shown.length;
+      const extraTile = extra > 0
+        ? `<div class="item-slot" style="background:var(--surface-hover); color:var(--text-muted); font-weight:600; font-size:0.85rem; border-style:dashed;">+${extra}</div>`
+        : "";
+      return `<div class="item-slots-row">${shown.map(itemSlot).join("")}${extraTile}</div>`;
     }
 
     // ---------------- Navegación entre vistas ----------------

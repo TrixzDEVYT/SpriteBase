@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SpriteBase — Profile</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .banner-preview {
+      width: 100%; height: 140px; border-radius: 12px;
+      background: var(--bg); border: 1px solid var(--border);
+      object-fit: cover; display: block; margin-bottom: 1rem;
+    }
+    .avatar-preview {
+      width: 88px; height: 88px; border-radius: 50%;
+      background: var(--bg); border: 2px solid var(--border);
+      object-fit: cover; display: block; margin-bottom: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <div id="site-header"></div>
+
+  <div class="page" style="max-width: 640px;">
+    <div class="page-header">
+      <h1>Profile</h1>
+      <p>Manage your public profile and account security.</p>
+    </div>
+
+    <!-- ===================== Avatar & Banner ===================== -->
+    <div class="card" style="margin-bottom: 1.5rem;">
+      <h3 style="margin-bottom: 1rem;">Avatar & Banner</h3>
+
+      <label>Banner preview</label>
+      <img id="banner-preview" class="banner-preview" src="" style="display:none;" onerror="this.style.display='none'" />
+      <label for="banner-input">Banner image URL</label>
+      <input type="text" id="banner-input" placeholder="https://..." />
+
+      <label>Avatar preview</label>
+      <img id="avatar-preview" class="avatar-preview" src="" style="display:none;" onerror="this.style.display='none'" />
+      <label for="avatar-input">Avatar image URL</label>
+      <input type="text" id="avatar-input" placeholder="https://..." />
+
+      <div id="images-status"></div>
+      <button class="btn btn-primary" id="save-images-btn">Save images</button>
+    </div>
+
+    <!-- ===================== Change username ===================== -->
+    <div class="card" style="margin-bottom: 1.5rem;">
+      <h3 style="margin-bottom: 0.4rem;">Change username</h3>
+      <p style="color: var(--text-muted); font-size: 0.85rem; margin-top:0; margin-bottom:1rem;">
+        Requires your current password to confirm it's really you.
+      </p>
+      <label for="new-username-input">New username</label>
+      <input type="text" id="new-username-input" placeholder="NewUsername" minlength="3" maxlength="30" />
+      <label for="username-current-password">Current password</label>
+      <input type="password" id="username-current-password" placeholder="••••••••" />
+      <div id="username-status"></div>
+      <button class="btn btn-primary" id="save-username-btn">Update username</button>
+    </div>
+
+    <!-- ===================== Change password ===================== -->
+    <div class="card" style="margin-bottom: 1.5rem;">
+      <h3 style="margin-bottom: 0.4rem;">Change password</h3>
+      <label for="current-password-input">Current password</label>
+      <input type="password" id="current-password-input" placeholder="••••••••" />
+      <label for="new-password-input">New password</label>
+      <input type="password" id="new-password-input" placeholder="••••••••" minlength="6" />
+      <div id="password-status"></div>
+      <button class="btn btn-primary" id="save-password-btn">Update password</button>
+    </div>
+
+    <!-- ===================== Log out ===================== -->
+    <div class="card">
+      <h3 style="margin-bottom: 0.8rem;">Session</h3>
+      <button class="btn btn-danger" id="logout-btn">Log out</button>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabaseClient.js"></script>
+  <script src="profanityFilter.js"></script>
+  <script src="auth.js"></script>
+  <script>
+    let currentUser = null;
+
+    function showImage(imgEl, url) {
+      if (url) {
+        imgEl.src = url;
+        imgEl.style.display = "block";
+      } else {
+        imgEl.style.display = "none";
+      }
+    }
+
+    document.getElementById("save-images-btn").addEventListener("click", async () => {
+      const statusEl = document.getElementById("images-status");
+      const avatar_url = document.getElementById("avatar-input").value.trim();
+      const banner_url = document.getElementById("banner-input").value.trim();
+
+      const { error } = await db
+        .from("profiles")
+        .update({ avatar_url: avatar_url || null, banner_url: banner_url || null })
+        .eq("id", currentUser.id);
+
+      statusEl.innerHTML = error
+        ? `<div class="status-message error">${error.message}</div>`
+        : `<div class="status-message success">Saved.</div>`;
+    });
+
+    document.getElementById("avatar-input").addEventListener("input", (e) => {
+      showImage(document.getElementById("avatar-preview"), e.target.value.trim());
+    });
+    document.getElementById("banner-input").addEventListener("input", (e) => {
+      showImage(document.getElementById("banner-preview"), e.target.value.trim());
+    });
+
+    /**
+     * Verifica la contraseña actual re-autenticando con el email interno
+     * de la sesión activa. Si falla, la contraseña es incorrecta.
+     */
+    async function verifyCurrentPassword(password) {
+      const { error } = await db.auth.signInWithPassword({
+        email: currentUser.email,
+        password,
+      });
+      return !error;
+    }
+
+    document.getElementById("save-username-btn").addEventListener("click", async () => {
+      const statusEl = document.getElementById("username-status");
+      const newUsername = document.getElementById("new-username-input").value.trim();
+      const currentPassword = document.getElementById("username-current-password").value;
+
+      if (!/^[a-zA-Z0-9_]{3,30}$/.test(newUsername)) {
+        statusEl.innerHTML = `<div class="status-message error">Username must be 3-30 characters: letters, numbers, or underscores only.</div>`;
+        return;
+      }
+      if (containsProfanity(newUsername)) {
+        statusEl.innerHTML = `<div class="status-message error">That username isn't allowed.</div>`;
+        return;
+      }
+      if (!currentPassword) {
+        statusEl.innerHTML = `<div class="status-message error">Enter your current password to confirm.</div>`;
+        return;
+      }
+
+      const passwordOk = await verifyCurrentPassword(currentPassword);
+      if (!passwordOk) {
+        statusEl.innerHTML = `<div class="status-message error">Current password is incorrect.</div>`;
+        return;
+      }
+
+      const { data: existing } = await db
+        .from("profiles")
+        .select("id")
+        .ilike("username", newUsername)
+        .neq("id", currentUser.id)
+        .maybeSingle();
+
+      if (existing) {
+        statusEl.innerHTML = `<div class="status-message error">That username is already taken.</div>`;
+        return;
+      }
+
+      const { error } = await db
+        .from("profiles")
+        .update({ username: newUsername })
+        .eq("id", currentUser.id);
+
+      statusEl.innerHTML = error
+        ? `<div class="status-message error">${error.message}</div>`
+        : `<div class="status-message success">Username updated!</div>`;
+
+      document.getElementById("username-current-password").value = "";
+    });
+
+    document.getElementById("save-password-btn").addEventListener("click", async () => {
+      const statusEl = document.getElementById("password-status");
+      const currentPassword = document.getElementById("current-password-input").value;
+      const newPassword = document.getElementById("new-password-input").value;
+
+      if (!currentPassword || !newPassword) {
+        statusEl.innerHTML = `<div class="status-message error">Fill in both fields.</div>`;
+        return;
+      }
+      if (newPassword.length < 6) {
+        statusEl.innerHTML = `<div class="status-message error">New password needs at least 6 characters.</div>`;
+        return;
+      }
+
+      const passwordOk = await verifyCurrentPassword(currentPassword);
+      if (!passwordOk) {
+        statusEl.innerHTML = `<div class="status-message error">Current password is incorrect.</div>`;
+        return;
+      }
+
+      const { error } = await db.auth.updateUser({ password: newPassword });
+
+      statusEl.innerHTML = error
+        ? `<div class="status-message error">${error.message}</div>`
+        : `<div class="status-message success">Password updated!</div>`;
+
+      document.getElementById("current-password-input").value = "";
+      document.getElementById("new-password-input").value = "";
+    });
+
+    document.getElementById("logout-btn").addEventListener("click", async () => {
+      await db.auth.signOut();
+      window.location.href = "index.html";
+    });
+
+    (async () => {
+      currentUser = await requireAuth();
+      if (!currentUser) return;
+
+      await renderNav("profile.html");
+
+      const { data: profile } = await db
+        .from("profiles")
+        .select("username, avatar_url, banner_url")
+        .eq("id", currentUser.id)
+        .maybeSingle();
+
+      document.getElementById("new-username-input").placeholder = profile?.username || "NewUsername";
+      document.getElementById("avatar-input").value = profile?.avatar_url || "";
+      document.getElementById("banner-input").value = profile?.banner_url || "";
+      showImage(document.getElementById("avatar-preview"), profile?.avatar_url);
+      showImage(document.getElementById("banner-preview"), profile?.banner_url);
+    })();
+  </script>
+</body>
+</html>
