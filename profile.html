@@ -41,6 +41,15 @@
       <div id="copy-status"></div>
     </div>
 
+    <!-- ===================== Bio ===================== -->
+    <div class="card" style="margin-bottom: 1.5rem;">
+      <h3 style="margin-bottom: 0.6rem;">Bio</h3>
+      <label for="bio-input">Tell others a bit about yourself (shown on your public profile)</label>
+      <textarea id="bio-input" placeholder="I mainly collect Legendary and Mythic sprites..." maxlength="500"></textarea>
+      <div id="bio-status"></div>
+      <button class="btn btn-primary" id="save-bio-btn">Save bio</button>
+    </div>
+
     <!-- ===================== Avatar & Banner ===================== -->
     <div class="card" style="margin-bottom: 1.5rem;">
       <h3 style="margin-bottom: 1rem;">Avatar & Banner</h3>
@@ -232,9 +241,29 @@
 
       const { data: profile } = await db
         .from("profiles")
-        .select("username, avatar_url, banner_url")
+        .select("username, avatar_url, banner_url, bio")
         .eq("id", currentUser.id)
         .maybeSingle();
+
+      document.getElementById("bio-input").value = profile?.bio || "";
+      document.getElementById("save-bio-btn").addEventListener("click", async () => {
+        const statusEl = document.getElementById("bio-status");
+        const bio = document.getElementById("bio-input").value.trim();
+
+        if (containsProfanity(bio)) {
+          statusEl.innerHTML = `<div class="status-message error">Please remove inappropriate language.</div>`;
+          return;
+        }
+
+        const { error } = await db
+          .from("profiles")
+          .update({ bio: bio || null })
+          .eq("id", currentUser.id);
+
+        statusEl.innerHTML = error
+          ? `<div class="status-message error">${error.message}</div>`
+          : `<div class="status-message success">Saved.</div>`;
+      });
 
       document.getElementById("new-username-input").placeholder = profile?.username || "NewUsername";
       document.getElementById("avatar-input").value = profile?.avatar_url || "";

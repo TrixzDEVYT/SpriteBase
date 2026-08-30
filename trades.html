@@ -250,7 +250,7 @@
           <div class="picker-header">
             <div>
               <label style="margin:0;">Looking for</label>
-              <div class="picker-subtext">From your wishlist</div>
+              <div class="picker-subtext">Optional — leave empty to give away for free</div>
             </div>
             <button class="btn btn-ghost picker-select-all-btn" id="select-all-want-btn" style="padding:0.25rem 0.6rem; font-size:0.8rem;">Select all</button>
           </div>
@@ -987,8 +987,8 @@
         statusEl.innerHTML = `<div class="status-message error">Please remove inappropriate language from your title or description.</div>`;
         return;
       }
-      if (offerIds.length === 0 || wantIds.length === 0) {
-        statusEl.innerHTML = `<div class="status-message error">Select at least one Sprite on each side.</div>`;
+      if (offerIds.length === 0) {
+        statusEl.innerHTML = `<div class="status-message error">Select at least one Sprite to offer.</div>`;
         return;
       }
       if (offerIds.length > 50 || wantIds.length > 50) {
@@ -1010,10 +1010,14 @@
       const offerRows = offerIds.map(id => ({ trade_id: trade.id, sprite_id: id }));
       const wantRows = wantIds.map(id => ({ trade_id: trade.id, sprite_id: id }));
 
-      const [{ error: offerError }, { error: wantError }] = await Promise.all([
-        db.from("trade_offer_items").insert(offerRows),
-        db.from("trade_want_items").insert(wantRows),
-      ]);
+      const inserts = [db.from("trade_offer_items").insert(offerRows)];
+      if (wantRows.length > 0) {
+        inserts.push(db.from("trade_want_items").insert(wantRows));
+      }
+
+      const results = await Promise.all(inserts);
+      const offerError = results[0].error;
+      const wantError = results[1]?.error;
 
       if (offerError || wantError) {
         const detail = offerError?.message || wantError?.message || "Unknown error.";

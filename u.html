@@ -92,7 +92,7 @@
 
       const { data: profile, error } = await db
         .from("profiles")
-        .select("id, username, avatar_url, banner_url, contact_type, contact_value, created_at")
+        .select("id, username, avatar_url, banner_url, bio, contact_type, contact_value, created_at")
         .ilike("username", username)
         .maybeSingle();
 
@@ -101,9 +101,9 @@
         return;
       }
 
-      const [{ data: verifiedRow }, { count: ownedCount }, { count: wantedCount }, { data: activeTrades }] = await Promise.all([
+      const [{ data: verifiedRow }, { data: ownedSprites }, { count: wantedCount }, { data: activeTrades }] = await Promise.all([
         db.from("verified_users").select("user_id").eq("user_id", profile.id).maybeSingle(),
-        db.from("user_sprites_owned").select("*", { count: "exact", head: true }).eq("user_id", profile.id),
+        db.from("user_sprites_owned").select("sprites(variant_name, rarity, image_url)").eq("user_id", profile.id),
         db.from("user_sprites_wanted").select("*", { count: "exact", head: true }).eq("user_id", profile.id),
         db.from("trades")
           .select(`
@@ -115,6 +115,8 @@
           .eq("status", "active")
           .order("created_at", { ascending: false }),
       ]);
+
+      const ownedCount = ownedSprites?.length ?? 0;
 
       const isVerified = !!verifiedRow;
       const memberSince = new Date(profile.created_at).toLocaleDateString(undefined, { year: "numeric", month: "long" });
@@ -145,6 +147,26 @@
           }).join("")
         : `<div class="empty-state">No active trades right now.</div>`;
 
+      const RARITY_LABELS = {
+        common: "Common", raro: "Rare", epico: "Epic",
+        legendario: "Legendary", mitico: "Mythic",
+      };
+
+      const spritesGridHtml = ownedCount > 0
+        ? `<div class="sprite-grid">${ownedSprites.map(row => {
+            const s = row.sprites;
+            return `
+              <div class="sprite-card rarity-${s.rarity}">
+                <span class="badge badge-${s.rarity}">${RARITY_LABELS[s.rarity] || s.rarity}</span>
+                ${s.image_url
+                  ? `<img src="${s.image_url}" style="width:100%; aspect-ratio:1; object-fit:cover; border-radius:10px; margin-top:0.6rem;" onerror="this.style.display='none'" />`
+                  : ""}
+                <div class="sprite-card-name">${s.variant_name}</div>
+              </div>
+            `;
+          }).join("")}</div>`
+        : `<div class="empty-state">This user hasn't marked any Sprites as owned yet.</div>`;
+
       contentEl.innerHTML = `
         ${bannerHtml}
         <div class="profile-header-row">
@@ -157,6 +179,8 @@
             <div class="profile-meta">Member since ${memberSince}</div>
           </div>
         </div>
+
+        ${profile.bio ? `<p style="margin: 1.2rem 0 0; color: var(--text-muted); max-width: 600px;">${profile.bio}</p>` : ""}
 
         <div class="profile-stats">
           <div class="stat-card"><div class="stat-value">${ownedCount ?? 0}</div><div class="stat-label">Sprites owned</div></div>
@@ -171,7 +195,10 @@
           </div>
         ` : ""}
 
-        <h3 style="margin-bottom: 1rem;">Active Trades</h3>
+        <h3 style="margin-bottom: 1rem;">Sprites</h3>
+        ${spritesGridHtml}
+
+        <h3 style="margin: 2rem 0 1rem;">Active Trades</h3>
         <div style="display:flex; flex-direction:column; gap:1rem;">${tradesHtml}</div>
       `;
     }
