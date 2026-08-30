@@ -21,6 +21,8 @@
       border-radius: 12px; padding: 0.6rem 1rem;
     }
     .stat-pill .num { font-family: var(--font-display); font-size: 1.3rem; }
+    .stat-pill.have .num { color: var(--success); }
+    .stat-pill.want .num { color: var(--rarity-rare); }
     .stat-pill .lbl { font-size: 0.78rem; color: var(--text-muted); }
     .progress-pill {
       background: var(--surface); border: 1px solid var(--border);
@@ -30,19 +32,48 @@
       height: 8px; border-radius: 999px; background: var(--bg);
       overflow: hidden; margin-top: 0.4rem;
     }
-    .progress-bar-fill { height: 100%; background: var(--accent); border-radius: 999px; }
+    .progress-bar-fill {
+      height: 100%; border-radius: 999px;
+      background: linear-gradient(90deg, var(--accent), #ffd166);
+      transition: width 0.3s ease;
+    }
 
     .toolbar-row {
       display: flex; gap: 0.8rem; flex-wrap: wrap; align-items: center;
       margin-bottom: 1rem;
     }
-    .toolbar-row input[type="text"] { margin-bottom: 0; flex: 1; min-width: 200px; }
+    .search-wrap { position: relative; flex: 1; min-width: 200px; }
+    .search-wrap input[type="text"] { margin-bottom: 0; padding-left: 2.2rem; }
+    .search-wrap .search-icon {
+      position: absolute; left: 0.8rem; top: 50%; transform: translateY(-50%);
+      color: var(--text-muted); pointer-events: none; font-size: 0.9rem;
+    }
+    .search-wrap .clear-btn {
+      position: absolute; right: 0.6rem; top: 50%; transform: translateY(-50%);
+      background: none; border: none; color: var(--text-muted); cursor: pointer;
+      font-size: 1rem; display: none; padding: 0.2rem;
+    }
+    .search-wrap.has-text .clear-btn { display: block; }
+
     .segmented { display: flex; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
     .segmented button {
       background: var(--surface); border: none; color: var(--text-muted);
-      padding: 0.6rem 1rem; cursor: pointer; font-family: var(--font-body); font-size: 0.88rem;
+      padding: 0.6rem 1rem; cursor: pointer; font-family: var(--font-body); font-size: 0.85rem;
+      white-space: nowrap;
     }
     .segmented button.active { background: var(--accent); color: white; }
+
+    .sort-select { margin-bottom: 0; width: auto; }
+
+    .filters-btn-wrap { position: relative; }
+    .filter-count-badge {
+      position: absolute; top: -6px; right: -6px;
+      background: var(--accent); color: white;
+      font-size: 0.68rem; font-weight: 700;
+      border-radius: 999px; min-width: 16px; height: 16px;
+      display: flex; align-items: center; justify-content: center;
+      padding: 0 3px;
+    }
 
     .filters-toggle-panel {
       display: none;
@@ -53,10 +84,16 @@
       padding: 1rem;
       margin-bottom: 1rem;
       flex-wrap: wrap;
+      align-items: flex-end;
     }
     .filters-toggle-panel.open { display: flex; }
     .filters-toggle-panel > div { flex: 1; min-width: 160px; }
     .filters-toggle-panel select { margin-bottom: 0; }
+    .filters-toggle-panel .clear-filters-link {
+      background: none; border: none; color: var(--accent);
+      cursor: pointer; font-size: 0.85rem; font-family: var(--font-body);
+      padding-bottom: 0.7rem;
+    }
 
     .quick-mark-bar {
       display: flex; justify-content: space-between; align-items: center;
@@ -94,30 +131,56 @@
       padding: 1rem;
       position: relative;
       cursor: default;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
     }
+    .sprite-tile:hover { transform: translateY(-3px); }
     .sprite-tile.quick-mark { cursor: pointer; }
-    .tile-top-row { display: flex; justify-content: space-between; align-items: flex-start; }
+
+    .sprite-tile.rarity-common    { box-shadow: 0 0 0 1px rgba(156,163,175,0.3); }
+    .sprite-tile.rarity-raro      { box-shadow: 0 0 0 1px rgba(77,166,255,0.4), 0 6px 18px -10px rgba(77,166,255,0.5); }
+    .sprite-tile.rarity-epico     { box-shadow: 0 0 0 1px rgba(184,85,242,0.4), 0 6px 18px -10px rgba(184,85,242,0.5); }
+    .sprite-tile.rarity-legendario{ box-shadow: 0 0 0 1px rgba(255,165,60,0.4), 0 6px 18px -10px rgba(255,165,60,0.5); }
+    .sprite-tile.rarity-mitico    { box-shadow: 0 0 0 1px rgba(255,92,138,0.4), 0 6px 18px -10px rgba(255,92,138,0.5); }
+    .sprite-tile.owned { border-color: var(--success); }
+    .sprite-tile.wanted { border-color: var(--rarity-rare); }
+
+    .tile-top-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.4rem; }
     .crown-badge {
       display: flex; align-items: center; gap: 0.2rem;
       font-family: var(--font-display); font-size: 0.9rem; color: #ffd166;
+      flex-shrink: 0;
     }
     .crown-badge img { width: 16px; height: 16px; }
     .badge-special { background: rgba(74,222,128,0.15); color: var(--success); }
-    .tile-image { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 10px; margin-top: 0.6rem; }
-    .tile-name { font-family: var(--font-display); margin-top: 0.5rem; font-size: 1.05rem; }
-    .tile-controls { display: flex; gap: 0.8rem; margin-top: 0.5rem; font-size: 0.85rem; }
-    .tile-controls label { display: flex; align-items: center; gap: 0.3rem; color: var(--text); font-weight: 400; margin: 0; }
-    .tile-controls input[type="checkbox"] { width: auto; margin: 0; }
-    .tile-level { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem; font-size: 0.82rem; color: var(--text-muted); }
-    .tile-level input {
-      width: 50px; margin: 0; padding: 0.3rem 0.4rem; text-align: center;
+    .tile-image { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 10px; margin-top: 0.6rem; background: var(--bg); }
+    .tile-name {
+      font-family: var(--font-display); margin-top: 0.5rem; font-size: 1.05rem;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
-    .tile-level input:disabled { opacity: 0.4; }
+
+    .tile-controls { display: flex; gap: 0.5rem; margin-top: 0.6rem; }
+    .status-btn {
+      flex: 1; text-align: center; padding: 0.4rem 0.3rem;
+      border-radius: 8px; font-size: 0.78rem; font-weight: 600;
+      border: 1px solid var(--border); background: var(--bg); color: var(--text-muted);
+      cursor: pointer; transition: all 0.12s ease;
+    }
+    .status-btn.have-btn.active { background: rgba(74,222,128,0.18); color: var(--success); border-color: var(--success); }
+    .status-btn.want-btn.active { background: rgba(77,166,255,0.18); color: var(--rarity-rare); border-color: var(--rarity-rare); }
+
+    .tile-level-row { margin-top: 0.65rem; }
+    .tile-level-label { font-size: 0.72rem; color: var(--text-muted); margin-bottom: 0.3rem; text-transform: uppercase; letter-spacing: 0.04em; }
+    .level-pips { display: flex; gap: 0.3rem; }
+    .level-pip {
+      flex: 1; height: 8px; border-radius: 4px;
+      background: var(--bg); border: 1px solid var(--border);
+      cursor: pointer; transition: background 0.12s ease;
+    }
+    .level-pip.filled { background: #ffd166; border-color: #ffd166; }
+    .level-pip.disabled { cursor: not-allowed; opacity: 0.4; }
 
     .load-more-row { text-align: center; margin-top: 2rem; color: var(--text-muted); font-size: 0.9rem; }
-    .load-more-row button {
-      display: block; margin: 0.6rem auto 0;
-    }
+    .load-more-row button { display: block; margin: 0.6rem auto 0; }
   </style>
 </head>
 <body>
@@ -130,8 +193,8 @@
         <p>Track your progress and organize your Sprites.</p>
       </div>
       <div class="stats-row">
-        <div class="stat-pill"><span class="num" id="stat-have">0</span><span class="lbl">Have</span></div>
-        <div class="stat-pill"><span class="num" id="stat-want">0</span><span class="lbl">Want</span></div>
+        <div class="stat-pill have"><span class="num" id="stat-have">0</span><span class="lbl">Have</span></div>
+        <div class="stat-pill want"><span class="num" id="stat-want">0</span><span class="lbl">Want</span></div>
         <div class="stat-pill"><span class="num" id="stat-missing">0</span><span class="lbl">Missing</span></div>
         <div class="progress-pill">
           <div style="display:flex; justify-content:space-between; font-size:0.85rem;">
@@ -144,14 +207,28 @@
     </div>
 
     <div class="toolbar-row">
-      <input type="text" id="search-input" placeholder="Search Sprites..." />
-      <div class="segmented" id="status-segmented">
-        <button class="active" data-mode="all">All</button>
-        <button data-mode="have">Have</button>
-        <button data-mode="want">Want</button>
-        <button data-mode="missing">Missing</button>
+      <div class="search-wrap" id="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="search-input" placeholder="Search Sprites..." />
+        <button class="clear-btn" id="clear-search-btn">✕</button>
       </div>
-      <button class="btn btn-ghost" id="filters-toggle-btn">⚗ Filters ▾</button>
+      <select class="sort-select" id="sort-select">
+        <option value="name-asc">Name A–Z</option>
+        <option value="name-desc">Name Z–A</option>
+        <option value="rarity">Rarity</option>
+        <option value="level">Level</option>
+      </select>
+      <div class="filters-btn-wrap">
+        <button class="btn btn-ghost" id="filters-toggle-btn">⚗ Filters ▾</button>
+        <span class="filter-count-badge" id="filter-count-badge" style="display:none;">0</span>
+      </div>
+    </div>
+
+    <div class="segmented" id="status-segmented" style="margin-bottom: 1rem; width: fit-content;">
+      <button class="active" data-mode="all">All <span id="count-all"></span></button>
+      <button data-mode="have">Have <span id="count-have"></span></button>
+      <button data-mode="want">Want <span id="count-want"></span></button>
+      <button data-mode="missing">Missing <span id="count-missing"></span></button>
     </div>
 
     <div class="filters-toggle-panel" id="filters-panel">
@@ -172,6 +249,7 @@
           <option value="any">Any</option>
         </select>
       </div>
+      <button class="clear-filters-link" id="clear-filters-link">Clear filters</button>
     </div>
 
     <div class="quick-mark-bar">
@@ -186,7 +264,9 @@
       <div class="toggle-switch on" id="quick-mark-toggle"><div class="knob"></div></div>
     </div>
 
-    <div id="collection-grid" class="collection-grid"></div>
+    <div id="collection-grid" class="collection-grid">
+      <p style="color: var(--text-muted); grid-column: 1/-1;">Loading your collection...</p>
+    </div>
     <div class="load-more-row" id="load-more-row"></div>
   </div>
 
@@ -204,6 +284,7 @@
     let filterRarity = "any";
     let filterStyle = "any";
     let searchTerm = "";
+    let sortMode = "name-asc";
     let quickMarkEnabled = true;
     const PAGE_SIZE = 24;
     let visibleCount = PAGE_SIZE;
@@ -212,6 +293,8 @@
       common: "Common", raro: "Rare", epico: "Epic",
       legendario: "Legendary", mitico: "Mythic",
     };
+    const RARITY_ORDER = { common: 0, raro: 1, epico: 2, legendario: 3, mitico: 4 };
+    const CROWN_URL = "https://fortnite.gg/img/x/sprites/crown.webp";
 
     async function loadData() {
       const [{ data: sprites }, { data: owned }, { data: wanted }] = await Promise.all([
@@ -251,10 +334,26 @@
       document.getElementById("progress-percent").textContent = `${percent}% Complete`;
       document.getElementById("progress-fraction").textContent = `${haveCount} / ${total}`;
       document.getElementById("progress-bar-fill").style.width = `${percent}%`;
+
+      document.getElementById("count-all").textContent = `(${total})`;
+      document.getElementById("count-have").textContent = `(${haveCount})`;
+      document.getElementById("count-want").textContent = `(${wantCount})`;
+      document.getElementById("count-missing").textContent = `(${missingCount})`;
+    }
+
+    function updateFilterBadge() {
+      const count = (filterRarity !== "any" ? 1 : 0) + (filterStyle !== "any" ? 1 : 0);
+      const badge = document.getElementById("filter-count-badge");
+      if (count > 0) {
+        badge.textContent = count;
+        badge.style.display = "flex";
+      } else {
+        badge.style.display = "none";
+      }
     }
 
     function getFilteredSprites() {
-      return allSprites.filter(s => {
+      let list = allSprites.filter(s => {
         if (searchTerm && !s.variant_name.toLowerCase().includes(searchTerm.toLowerCase())) return false;
         if (filterRarity !== "any" && s.rarity !== filterRarity) return false;
         if (filterStyle !== "any" && getSpriteType(s.variant_name) !== filterStyle) return false;
@@ -267,6 +366,34 @@
 
         return true;
       });
+
+      list.sort((a, b) => {
+        if (sortMode === "name-asc") return a.variant_name.localeCompare(b.variant_name);
+        if (sortMode === "name-desc") return b.variant_name.localeCompare(a.variant_name);
+        if (sortMode === "rarity") return (RARITY_ORDER[b.rarity] ?? 0) - (RARITY_ORDER[a.rarity] ?? 0);
+        if (sortMode === "level") {
+          const la = ownedMap.get(a.id)?.level ?? -1;
+          const lb = ownedMap.get(b.id)?.level ?? -1;
+          return lb - la;
+        }
+        return 0;
+      });
+
+      return list;
+    }
+
+    function levelPipsHtml(spriteId, isOwned, level) {
+      let pips = "";
+      for (let i = 1; i <= 5; i++) {
+        const filled = isOwned && i <= level;
+        pips += `<div class="level-pip ${filled ? "filled" : ""} ${isOwned ? "" : "disabled"}" data-level="${i}"></div>`;
+      }
+      return `
+        <div class="tile-level-row" data-static="true">
+          <div class="tile-level-label">Level ${isOwned ? level : "—"}</div>
+          <div class="level-pips">${pips}</div>
+        </div>
+      `;
     }
 
     function tileHtml(sprite) {
@@ -275,7 +402,7 @@
       const isWanted = wantedMap.has(sprite.id);
       const type = getSpriteType(sprite.variant_name);
       const isSpecial = type !== "Normal";
-      const level = owned?.level ?? "";
+      const level = owned?.level ?? 1;
       const showCrown = isOwned && owned.level === 5;
 
       const badgeHtml = isSpecial
@@ -283,24 +410,23 @@
         : `<span class="badge badge-${sprite.rarity}">${RARITY_LABELS[sprite.rarity] || sprite.rarity}</span>`;
 
       const crownHtml = showCrown
-        ? `<span class="crown-badge"><img src="https://fortnite.gg/img/x/sprites/crown.webp" alt="Level 5" />5</span>`
+        ? `<span class="crown-badge"><img src="${CROWN_URL}" alt="Level 5" onerror="this.style.display='none'" />5</span>`
         : "";
 
+      const tileStateClass = isOwned ? "owned" : (isWanted ? "wanted" : "");
+
       return `
-        <div class="sprite-tile ${quickMarkEnabled ? "quick-mark" : ""}" data-sprite-id="${sprite.id}">
+        <div class="sprite-tile rarity-${sprite.rarity} ${tileStateClass} ${quickMarkEnabled ? "quick-mark" : ""}" data-sprite-id="${sprite.id}" title="${quickMarkEnabled ? 'Click = Have · Right-click = Want' : ''}">
           <div class="tile-top-row">${badgeHtml}${crownHtml}</div>
           ${sprite.image_url
             ? `<img src="${sprite.image_url}" class="tile-image" onerror="this.style.display='none'" />`
-            : ""}
-          <div class="tile-name">${sprite.variant_name}</div>
+            : `<div class="tile-image" style="display:flex; align-items:center; justify-content:center; color:var(--text-muted); font-size:1.5rem;">❔</div>`}
+          <div class="tile-name" title="${sprite.variant_name}">${sprite.variant_name}</div>
           <div class="tile-controls" data-static="true">
-            <label><input type="checkbox" class="have-check" ${isOwned ? "checked" : ""} /> Have</label>
-            <label><input type="checkbox" class="want-check" ${isWanted ? "checked" : ""} /> Want</label>
+            <button class="status-btn have-btn ${isOwned ? "active" : ""}" data-action="have">✓ Have</button>
+            <button class="status-btn want-btn ${isWanted ? "active" : ""}" data-action="want">★ Want</button>
           </div>
-          <div class="tile-level" data-static="true">
-            Level:
-            <input type="number" class="level-input" min="1" max="5" value="${level}" ${isOwned ? "" : "disabled"} />
-          </div>
+          ${levelPipsHtml(sprite.id, isOwned, level)}
         </div>
       `;
     }
@@ -352,7 +478,7 @@
     async function setLevel(spriteId, level) {
       const entry = ownedMap.get(spriteId);
       if (!entry) return;
-      const clamped = Math.min(5, Math.max(1, parseInt(level, 10) || 1));
+      const clamped = Math.min(5, Math.max(1, level));
       await db.from("user_sprites_owned").update({ level: clamped }).eq("id", entry.rowId);
       entry.level = clamped;
     }
@@ -360,6 +486,7 @@
     function renderGrid() {
       const grid = document.getElementById("collection-grid");
       const filtered = getFilteredSprites();
+      updateFilterBadge();
 
       if (filtered.length === 0) {
         grid.innerHTML = `<div class="empty-state" style="grid-column: 1/-1;">No Sprites match your search or filters.</div>`;
@@ -370,30 +497,31 @@
       const visible = filtered.slice(0, visibleCount);
       grid.innerHTML = visible.map(tileHtml).join("");
 
-      // Checkboxes y nivel: siempre activos (independientes del modo Quick Mark)
       grid.querySelectorAll(".sprite-tile").forEach(tile => {
         const spriteId = tile.dataset.spriteId;
 
-        tile.querySelector(".have-check").addEventListener("click", async (e) => {
+        tile.querySelector(".have-btn").addEventListener("click", async (e) => {
           e.stopPropagation();
-          await setHave(spriteId, e.target.checked);
+          const isActive = e.currentTarget.classList.contains("active");
+          await setHave(spriteId, !isActive);
           renderGrid();
         });
 
-        tile.querySelector(".want-check").addEventListener("click", async (e) => {
+        tile.querySelector(".want-btn").addEventListener("click", async (e) => {
           e.stopPropagation();
-          await setWant(spriteId, e.target.checked);
+          const isActive = e.currentTarget.classList.contains("active");
+          await setWant(spriteId, !isActive);
           renderGrid();
         });
 
-        tile.querySelector(".level-input").addEventListener("click", (e) => e.stopPropagation());
-        tile.querySelector(".level-input").addEventListener("change", async (e) => {
-          await setLevel(spriteId, e.target.value);
-          renderGrid();
+        tile.querySelectorAll(".level-pip:not(.disabled)").forEach(pip => {
+          pip.addEventListener("click", async (e) => {
+            e.stopPropagation();
+            await setLevel(spriteId, parseInt(pip.dataset.level, 10));
+            renderGrid();
+          });
         });
 
-        // Quick Mark Mode: click izquierdo = Have (o limpia si ya lo tienes),
-        // click derecho = Want (o limpia si ya lo buscabas).
         if (quickMarkEnabled) {
           tile.addEventListener("click", async (e) => {
             if (e.target.closest('[data-static="true"]')) return;
@@ -427,9 +555,25 @@
       }
     }
 
-    document.getElementById("search-input").addEventListener("input", (e) => {
+    const searchInput = document.getElementById("search-input");
+    const searchWrap = document.getElementById("search-wrap");
+
+    searchInput.addEventListener("input", (e) => {
       searchTerm = e.target.value;
+      searchWrap.classList.toggle("has-text", searchTerm.length > 0);
       visibleCount = PAGE_SIZE;
+      renderGrid();
+    });
+
+    document.getElementById("clear-search-btn").addEventListener("click", () => {
+      searchInput.value = "";
+      searchTerm = "";
+      searchWrap.classList.remove("has-text");
+      renderGrid();
+    });
+
+    document.getElementById("sort-select").addEventListener("change", (e) => {
+      sortMode = e.target.value;
       renderGrid();
     });
 
@@ -455,6 +599,14 @@
     document.getElementById("filter-style").addEventListener("change", (e) => {
       filterStyle = e.target.value;
       visibleCount = PAGE_SIZE;
+      renderGrid();
+    });
+
+    document.getElementById("clear-filters-link").addEventListener("click", () => {
+      filterRarity = "any";
+      filterStyle = "any";
+      document.getElementById("filter-rarity").value = "any";
+      document.getElementById("filter-style").value = "any";
       renderGrid();
     });
 
