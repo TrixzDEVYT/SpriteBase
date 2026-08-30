@@ -27,6 +27,20 @@
       <p>Manage your public profile and account security.</p>
     </div>
 
+    <!-- ===================== Share profile ===================== -->
+    <div class="card" style="margin-bottom: 1.5rem;">
+      <h3 style="margin-bottom: 0.6rem;">Your public profile</h3>
+      <p style="color: var(--text-muted); font-size: 0.85rem; margin-top:0; margin-bottom: 1rem;">
+        Share this link so others can see your collection stats and active trades.
+      </p>
+      <div style="display:flex; gap:0.6rem; flex-wrap:wrap;">
+        <input type="text" id="share-link-input" readonly style="flex:1; min-width:200px; margin-bottom:0;" />
+        <button class="btn btn-primary" id="copy-link-btn">Copy Link</button>
+        <a id="view-profile-link" href="#" target="_blank" class="btn btn-ghost">View</a>
+      </div>
+      <div id="copy-status"></div>
+    </div>
+
     <!-- ===================== Avatar & Banner ===================== -->
     <div class="card" style="margin-bottom: 1.5rem;">
       <h3 style="margin-bottom: 1rem;">Avatar & Banner</h3>
@@ -227,6 +241,22 @@
       document.getElementById("banner-input").value = profile?.banner_url || "";
       showImage(document.getElementById("avatar-preview"), profile?.avatar_url);
       showImage(document.getElementById("banner-preview"), profile?.banner_url);
+
+      // Link de perfil público
+      const shareUrl = `${window.location.origin}${window.location.pathname.replace("profile.html", "u.html")}?u=${encodeURIComponent(profile?.username || "")}`;
+      document.getElementById("share-link-input").value = shareUrl;
+      document.getElementById("view-profile-link").href = shareUrl;
+
+      document.getElementById("copy-link-btn").addEventListener("click", async () => {
+        const statusEl = document.getElementById("copy-status");
+        try {
+          await navigator.clipboard.writeText(shareUrl);
+          statusEl.innerHTML = `<div class="status-message success">Link copied!</div>`;
+        } catch {
+          document.getElementById("share-link-input").select();
+          statusEl.innerHTML = `<div class="status-message error">Couldn't copy automatically — link is selected, press Ctrl+C.</div>`;
+        }
+      });
     })();
   </script>
 </body>
