@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SpriteBase — Profile</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .profile-banner {
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      max-height: 320px;
+      object-fit: cover;
+      border-radius: var(--radius);
+      background: var(--surface);
+      display: block;
+    }
+    .profile-banner-empty {
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      max-height: 320px;
+      border-radius: var(--radius);
+      background: linear-gradient(135deg, var(--surface), var(--bg));
+      border: 1px solid var(--border);
+    }
+    .profile-header-row {
+      display: flex;
+      align-items: flex-end;
+      gap: 1rem;
+      margin-top: -48px;
+      padding: 0 1.2rem;
+      flex-wrap: wrap;
+    }
+    .profile-avatar {
+      width: 96px; height: 96px; border-radius: 50%;
+      background: var(--surface); border: 4px solid var(--bg);
+      object-fit: cover; flex-shrink: 0;
+    }
+    .profile-avatar-empty {
+      width: 96px; height: 96px; border-radius: 50%;
+      background: var(--accent); border: 4px solid var(--bg);
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-display); font-size: 2.2rem; color: white;
+      flex-shrink: 0;
+    }
+    .profile-name-block { padding-bottom: 0.4rem; }
+    .profile-username { font-family: var(--font-display); font-size: 1.6rem; display:flex; align-items:center; gap:0.4rem; }
+    .profile-meta { color: var(--text-muted); font-size: 0.85rem; margin-top: 0.2rem; }
+
+    .profile-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 1rem;
+      margin: 2rem 0;
+    }
+  </style>
+</head>
+<body>
+  <div id="site-header"></div>
+
+  <div class="page">
+    <div id="profile-content">
+      <p style="color: var(--text-muted);">Loading profile...</p>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabaseClient.js"></script>
+  <script src="auth.js"></script>
+  <script>
+    const PLATFORM_ICONS = {
+      discord: "🎮 Discord", twitter: "🐦 Twitter / X", instagram: "📷 Instagram",
+      email: "✉️ Email", other: "🔗 Contact",
+    };
+
+    function chip(sprite) {
+      const thumb = sprite.image_url
+        ? `<img src="${sprite.image_url}" style="width:16px; height:16px; object-fit:cover; border-radius:4px; vertical-align:middle; margin-right:0.35rem;" onerror="this.style.display='none'" />`
+        : "";
+      return `<span class="chip">${thumb}${sprite.variant_name}</span>`;
+    }
+
+    async function loadProfile() {
+      const params = new URLSearchParams(window.location.search);
+      const username = params.get("u");
+      const contentEl = document.getElementById("profile-content");
+
+      if (!username) {
+        contentEl.innerHTML = `<div class="empty-state">No username specified. Try a link like u.html?u=Tryxie</div>`;
+        return;
+      }
+
+      const { data: profile, error } = await db
+        .from("profiles")
+        .select("id, username, avatar_url, banner_url, contact_type, contact_value, created_at")
+        .ilike("username", username)
+        .maybeSingle();
+
+      if (error || !profile) {
+        contentEl.innerHTML = `<div class="empty-state">No user found with username "${username}".</div>`;
+        return;
+      }
+
+      const [{ data: verifiedRow }, { count: ownedCount }, { count: wantedCount }, { data: activeTrades }] = await Promise.all([
+        db.from("verified_users").select("user_id").eq("user_id", profile.id).maybeSingle(),
+        db.from("user_sprites_owned").select("*", { count: "exact", head: true }).eq("user_id", profile.id),
+        db.from("user_sprites_wanted").select("*", { count: "exact", head: true }).eq("user_id", profile.id),
+        db.from("trades")
+          .select(`
+            id, title, description, created_at,
+            trade_offer_items ( sprites ( variant_name, rarity, image_url ) ),
+            trade_want_items ( sprites ( variant_name, rarity, image_url ) )
+          `)
+          .eq("user_id", profile.id)
+          .eq("status", "active")
+          .order("created_at", { ascending: false }),
+      ]);
+
+      const isVerified = !!verifiedRow;
+      const memberSince = new Date(profile.created_at).toLocaleDateString(undefined, { year: "numeric", month: "long" });
+      const contactLabel = PLATFORM_ICONS[profile.contact_type] || "🔗 Contact";
+
+      const bannerHtml = profile.banner_url
+        ? `<img src="${profile.banner_url}" class="profile-banner" onerror="this.outerHTML='<div class=\\'profile-banner-empty\\'></div>'" />`
+        : `<div class="profile-banner-empty"></div>`;
+
+      const avatarHtml = profile.avatar_url
+        ? `<img src="${profile.avatar_url}" class="profile-avatar" onerror="this.outerHTML='<div class=\\'profile-avatar-empty\\'>${profile.username.charAt(0).toUpperCase()}</div>'" />`
+        : `<div class="profile-avatar-empty">${profile.username.charAt(0).toUpperCase()}</div>`;
+
+      const tradesHtml = (activeTrades && activeTrades.length > 0)
+        ? activeTrades.map(t => {
+            const offerChips = t.trade_offer_items.map(i => chip(i.sprites)).join("") || "—";
+            const wantChips = t.trade_want_items.map(i => chip(i.sprites)).join("") || "—";
+            return `
+              <div class="trade-card">
+                <div class="trade-card-title">${t.title}</div>
+                ${t.description ? `<p style="color:var(--text-muted); font-size:0.9rem; margin:0;">${t.description}</p>` : ""}
+                <div class="trade-columns">
+                  <div><div class="trade-col-label">Offering</div><div class="chip-row">${offerChips}</div></div>
+                  <div><div class="trade-col-label">Looking for</div><div class="chip-row">${wantChips}</div></div>
+                </div>
+              </div>
+            `;
+          }).join("")
+        : `<div class="empty-state">No active trades right now.</div>`;
+
+      contentEl.innerHTML = `
+        ${bannerHtml}
+        <div class="profile-header-row">
+          ${avatarHtml}
+          <div class="profile-name-block">
+            <div class="profile-username">
+              @${profile.username}
+              ${isVerified ? `<img src="https://static.vecteezy.com/system/resources/thumbnails/047/309/930/small/verified-badge-profile-icon-png.png" alt="Verified" style="width:18px; height:18px;" />` : ""}
+            </div>
+            <div class="profile-meta">Member since ${memberSince}</div>
+          </div>
+        </div>
+
+        <div class="profile-stats">
+          <div class="stat-card"><div class="stat-value">${ownedCount ?? 0}</div><div class="stat-label">Sprites owned</div></div>
+          <div class="stat-card"><div class="stat-value">${wantedCount ?? 0}</div><div class="stat-label">Sprites wanted</div></div>
+          <div class="stat-card"><div class="stat-value">${activeTrades?.length ?? 0}</div><div class="stat-label">Active trades</div></div>
+        </div>
+
+        ${profile.contact_value ? `
+          <div class="card" style="margin-bottom: 2rem;">
+            <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:0.3rem;">Contact</div>
+            <div>${contactLabel}: <strong>${profile.contact_value}</strong></div>
+          </div>
+        ` : ""}
+
+        <h3 style="margin-bottom: 1rem;">Active Trades</h3>
+        <div style="display:flex; flex-direction:column; gap:1rem;">${tradesHtml}</div>
+      `;
+    }
+
+    (async () => {
+      await renderNav(null);
+      await loadProfile();
+    })();
+  </script>
+</body>
+</html>
