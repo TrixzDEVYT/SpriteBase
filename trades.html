@@ -223,30 +223,116 @@
 
     <!-- =================== CREATE =================== -->
     <div id="create-section" style="display:none;">
-      <div class="card">
+      <div class="card" style="margin-bottom: 1.2rem;">
         <label for="trade-title">Title</label>
         <input type="text" id="trade-title" placeholder="Looking for Fishstick, have Gustambo" maxlength="100" />
 
         <label for="trade-description">Description (optional)</label>
         <textarea id="trade-description" placeholder="Additional details about your offer..." maxlength="2000"></textarea>
+      </div>
 
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <label style="margin:0;">Offering (from your collection)</label>
-          <button class="btn btn-ghost" id="select-all-offer-btn" style="padding:0.25rem 0.6rem; font-size:0.8rem;">Select all</button>
+      <div class="picker-columns">
+        <div class="card picker-card">
+          <div class="picker-header">
+            <div>
+              <label style="margin:0;">Offering</label>
+              <div class="picker-subtext">From your collection</div>
+            </div>
+            <button class="btn btn-ghost picker-select-all-btn" id="select-all-offer-btn" style="padding:0.25rem 0.6rem; font-size:0.8rem;">Select all</button>
+          </div>
+          <input type="text" id="offer-search" class="picker-search" placeholder="Search your Sprites..." />
+          <div id="offer-picker-grid" class="picker-grid"></div>
         </div>
-        <div id="offer-checkboxes" class="card" style="background: var(--bg); margin-bottom:1.1rem;"></div>
 
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <label style="margin:0;">Looking for</label>
-          <button class="btn btn-ghost" id="select-all-want-btn" style="padding:0.25rem 0.6rem; font-size:0.8rem;">Select all</button>
+        <div class="picker-card-arrow">⇄</div>
+
+        <div class="card picker-card">
+          <div class="picker-header">
+            <div>
+              <label style="margin:0;">Looking for</label>
+              <div class="picker-subtext">From your wishlist</div>
+            </div>
+            <button class="btn btn-ghost picker-select-all-btn" id="select-all-want-btn" style="padding:0.25rem 0.6rem; font-size:0.8rem;">Select all</button>
+          </div>
+          <input type="text" id="want-search" class="picker-search" placeholder="Search your wishlist..." />
+          <div id="want-picker-grid" class="picker-grid"></div>
         </div>
-        <div id="want-checkboxes" class="card" style="background: var(--bg); margin-bottom:1.1rem;"></div>
+      </div>
 
+      <div class="section-heading-small">Preview</div>
+      <div id="create-preview" class="trade-card" style="margin-bottom: 1.2rem;"></div>
+
+      <div class="card">
         <div id="create-status"></div>
-        <button class="btn btn-primary" id="create-trade-btn">Post Trade</button>
+        <button class="btn btn-primary" id="create-trade-btn" style="width:100%;">Post Trade</button>
       </div>
     </div>
   </div>
+
+  <style>
+    .picker-columns {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 1rem;
+      align-items: start;
+      margin-bottom: 1.2rem;
+    }
+    @media (max-width: 700px) {
+      .picker-columns { grid-template-columns: 1fr; }
+      .picker-card-arrow { display: none; }
+    }
+    .picker-card-arrow {
+      width: 34px; height: 34px; border-radius: 50%;
+      background: var(--bg); border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text-muted); font-size: 1rem; margin-top: 2.5rem;
+    }
+    .picker-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.7rem; }
+    .picker-subtext { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.15rem; }
+    .picker-search { margin-bottom: 0.8rem; }
+    .picker-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+      gap: 0.6rem;
+      max-height: 340px;
+      overflow-y: auto;
+      padding-right: 0.2rem;
+    }
+    .picker-tile {
+      background: var(--bg);
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      padding: 0.5rem;
+      cursor: pointer;
+      text-align: center;
+      position: relative;
+      transition: border-color 0.12s ease, transform 0.12s ease;
+    }
+    .picker-tile:hover { transform: translateY(-2px); }
+    .picker-tile.selected { border-color: var(--accent); background: rgba(139,92,246,0.1); }
+    .picker-tile img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 6px; }
+    .picker-tile .placeholder-img {
+      width: 100%; aspect-ratio: 1; border-radius: 6px;
+      background: var(--surface); display:flex; align-items:center; justify-content:center;
+      color: var(--text-muted); font-size: 1.2rem;
+    }
+    .picker-tile-name {
+      font-size: 0.7rem; margin-top: 0.35rem;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .picker-tile-check {
+      position: absolute; top: 4px; right: 4px;
+      width: 18px; height: 18px; border-radius: 50%;
+      background: var(--accent); color: white;
+      display: none; align-items: center; justify-content: center;
+      font-size: 0.7rem;
+    }
+    .picker-tile.selected .picker-tile-check { display: flex; }
+    .picker-empty { grid-column: 1/-1; color: var(--text-muted); font-size: 0.85rem; text-align: center; padding: 1rem; }
+    .section-heading-small {
+      font-family: var(--font-display); font-size: 1.1rem; margin-bottom: 0.7rem;
+    }
+  </style>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabaseClient.js"></script>
@@ -255,6 +341,7 @@
   <script src="auth.js"></script>
   <script>
     let currentUser = null;
+    let currentUsername = "you";
     let allTrades = [];       // datos crudos ya cargados de Supabase
     let matchMap = {};        // { ownerUserId: 'full' | 'partial' }
     let allSpritesCatalog = [];
@@ -774,50 +861,123 @@
     }
 
     // ---------------- Create trade ----------------
+    let offerSpritesForForm = [];
+    let wantSpritesForForm = [];
+    let selectedOfferIds = new Set();
+    let selectedWantIds = new Set();
+
     async function loadUserSpritesForForm() {
       const [{ data: owned }, { data: wanted }] = await Promise.all([
-        db.from("user_sprites_owned").select("sprite_id, sprites(variant_name)").eq("user_id", currentUser.id),
-        db.from("user_sprites_wanted").select("sprite_id, sprites(variant_name)").eq("user_id", currentUser.id),
+        db.from("user_sprites_owned").select("sprite_id, sprites(variant_name, rarity, image_url)").eq("user_id", currentUser.id),
+        db.from("user_sprites_wanted").select("sprite_id, sprites(variant_name, rarity, image_url)").eq("user_id", currentUser.id),
       ]);
 
-      const offerBox = document.getElementById("offer-checkboxes");
-      const wantBox = document.getElementById("want-checkboxes");
+      offerSpritesForForm = (owned || []).map(o => ({ id: o.sprite_id, ...o.sprites }));
+      wantSpritesForForm = (wanted || []).map(w => ({ id: w.sprite_id, ...w.sprites }));
+      selectedOfferIds = new Set();
+      selectedWantIds = new Set();
 
-      offerBox.innerHTML = (owned && owned.length)
-        ? owned.map(o => `
-            <label style="display:flex; align-items:center; gap:0.5rem; font-weight:400; color: var(--text);">
-              <input type="checkbox" value="${o.sprite_id}" class="offer-check" style="width:auto; margin:0;" />
-              ${o.sprites.variant_name}
-            </label>`).join("")
-        : `<p style="color: var(--text-muted); margin:0;">Add Sprites to your collection first.</p>`;
-
-      wantBox.innerHTML = (wanted && wanted.length)
-        ? wanted.map(w => `
-            <label style="display:flex; align-items:center; gap:0.5rem; font-weight:400; color: var(--text);">
-              <input type="checkbox" value="${w.sprite_id}" class="want-check" style="width:auto; margin:0;" />
-              ${w.sprites.variant_name}
-            </label>`).join("")
-        : `<p style="color: var(--text-muted); margin:0;">Add Sprites to your wishlist first.</p>`;
+      renderPickerGrid("offer-picker-grid", offerSpritesForForm, selectedOfferIds, "", "Add Sprites to your collection first.");
+      renderPickerGrid("want-picker-grid", wantSpritesForForm, selectedWantIds, "", "Add Sprites to your wishlist first.");
+      updateCreatePreview();
     }
 
+    function pickerTileHtml(sprite, selected) {
+      const img = sprite.image_url
+        ? `<img src="${sprite.image_url}" onerror="this.outerHTML='<div class=\\'placeholder-img\\'>❔</div>'" />`
+        : `<div class="placeholder-img">❔</div>`;
+      return `
+        <div class="picker-tile ${selected ? "selected" : ""}" data-id="${sprite.id}">
+          <div class="picker-tile-check">✓</div>
+          ${img}
+          <div class="picker-tile-name">${sprite.variant_name}</div>
+        </div>
+      `;
+    }
+
+    function renderPickerGrid(containerId, sprites, selectedSet, term, emptyMessage) {
+      const container = document.getElementById(containerId);
+      const filtered = sprites.filter(s => s.variant_name.toLowerCase().includes(term.toLowerCase()));
+
+      if (sprites.length === 0) {
+        container.innerHTML = `<div class="picker-empty">${emptyMessage}</div>`;
+        return;
+      }
+      if (filtered.length === 0) {
+        container.innerHTML = `<div class="picker-empty">No matches.</div>`;
+        return;
+      }
+
+      container.innerHTML = filtered.map(s => pickerTileHtml(s, selectedSet.has(s.id))).join("");
+
+      container.querySelectorAll(".picker-tile").forEach(tile => {
+        tile.addEventListener("click", () => {
+          const id = tile.dataset.id;
+          if (selectedSet.has(id)) selectedSet.delete(id);
+          else selectedSet.add(id);
+          tile.classList.toggle("selected");
+          updateCreatePreview();
+        });
+      });
+    }
+
+    document.getElementById("offer-search").addEventListener("input", (e) => {
+      renderPickerGrid("offer-picker-grid", offerSpritesForForm, selectedOfferIds, e.target.value, "Add Sprites to your collection first.");
+    });
+    document.getElementById("want-search").addEventListener("input", (e) => {
+      renderPickerGrid("want-picker-grid", wantSpritesForForm, selectedWantIds, e.target.value, "Add Sprites to your wishlist first.");
+    });
+
     document.getElementById("select-all-offer-btn").addEventListener("click", () => {
-      const boxes = document.querySelectorAll(".offer-check");
-      const allChecked = [...boxes].every(c => c.checked);
-      boxes.forEach(c => c.checked = !allChecked);
+      const allSelected = offerSpritesForForm.length > 0 && offerSpritesForForm.every(s => selectedOfferIds.has(s.id));
+      selectedOfferIds = new Set(allSelected ? [] : offerSpritesForForm.map(s => s.id));
+      renderPickerGrid("offer-picker-grid", offerSpritesForForm, selectedOfferIds, document.getElementById("offer-search").value, "Add Sprites to your collection first.");
+      updateCreatePreview();
     });
 
     document.getElementById("select-all-want-btn").addEventListener("click", () => {
-      const boxes = document.querySelectorAll(".want-check");
-      const allChecked = [...boxes].every(c => c.checked);
-      boxes.forEach(c => c.checked = !allChecked);
+      const allSelected = wantSpritesForForm.length > 0 && wantSpritesForForm.every(s => selectedWantIds.has(s.id));
+      selectedWantIds = new Set(allSelected ? [] : wantSpritesForForm.map(s => s.id));
+      renderPickerGrid("want-picker-grid", wantSpritesForForm, selectedWantIds, document.getElementById("want-search").value, "Add Sprites to your wishlist first.");
+      updateCreatePreview();
     });
+
+    function updateCreatePreview() {
+      const title = document.getElementById("trade-title").value.trim() || "Your trade title will appear here";
+      const description = document.getElementById("trade-description").value.trim();
+      const offerSelected = offerSpritesForForm.filter(s => selectedOfferIds.has(s.id));
+      const wantSelected = wantSpritesForForm.filter(s => selectedWantIds.has(s.id));
+
+      document.getElementById("create-preview").innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:0.5rem;">
+          <div style="font-size:0.9rem; font-weight:600;">@${currentUsername} (you)</div>
+          <span class="trade-status-badge" style="background:rgba(139,92,246,0.15); color:var(--accent);">draft</span>
+        </div>
+        <div class="trade-card-title" style="margin-top:0.6rem;">${title}</div>
+        ${description ? `<p style="color:var(--text-muted); font-size:0.88rem; margin:0.3rem 0 0;">${description}</p>` : ""}
+        <div class="trade-columns-visual">
+          <div>
+            <div class="trade-col-label">Offering</div>
+            ${itemSlotsRow(offerSelected)}
+          </div>
+          <div class="swap-icon">⇄</div>
+          <div>
+            <div class="trade-col-label">Looking for</div>
+            ${itemSlotsRow(wantSelected)}
+          </div>
+        </div>
+      `;
+    }
+
+    document.getElementById("trade-title").addEventListener("input", updateCreatePreview);
+    document.getElementById("trade-description").addEventListener("input", updateCreatePreview);
 
     document.getElementById("create-trade-btn").addEventListener("click", async () => {
       const statusEl = document.getElementById("create-status");
       const title = document.getElementById("trade-title").value.trim();
       const description = document.getElementById("trade-description").value.trim();
-      const offerIds = [...document.querySelectorAll(".offer-check:checked")].map(c => c.value);
-      const wantIds = [...document.querySelectorAll(".want-check:checked")].map(c => c.value);
+      const offerIds = [...selectedOfferIds];
+      const wantIds = [...selectedWantIds];
 
       if (title.length < 3) {
         statusEl.innerHTML = `<div class="status-message error">Title needs at least 3 characters.</div>`;
@@ -864,7 +1024,8 @@
       statusEl.innerHTML = `<div class="status-message success">Trade posted!</div>`;
       document.getElementById("trade-title").value = "";
       document.getElementById("trade-description").value = "";
-      document.querySelectorAll(".offer-check, .want-check").forEach(c => c.checked = false);
+      selectedOfferIds = new Set();
+      selectedWantIds = new Set();
 
       showView("browse");
       loadTrades();
@@ -873,6 +1034,9 @@
     (async () => {
       currentUser = await requireAuth();
       if (!currentUser) return;
+
+      const { data: profile } = await db.from("profiles").select("username").eq("id", currentUser.id).maybeSingle();
+      currentUsername = profile?.username || "you";
 
       await renderNav("trades.html");
       await loadMatchMap();
