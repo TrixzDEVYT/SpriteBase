@@ -11,7 +11,7 @@
 // =====================================================================
 
 function makeSyntheticEmail() {
-  return `user-${crypto.randomUUID()}@spritebase.local`;
+  return `user-${crypto.randomUUID()}@spritebase-internal.com`;
 }
 
 /**
