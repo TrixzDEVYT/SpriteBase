@@ -495,7 +495,7 @@
           <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:0.5rem;">
             <div class="trade-owner">
               <div>
-                <div style="font-size:0.9rem; font-weight:600;">@${trade.profiles?.username || "user"} ${verifiedCheck(trade.user_id)}${isOwn ? " (you)" : ""}</div>
+                <div style="font-size:0.9rem; font-weight:600;"><a href="u.html?u=${encodeURIComponent(trade.profiles?.username || '')}" style="text-decoration:none; color:inherit;">@${trade.profiles?.username || "user"}</a> ${verifiedCheck(trade.user_id)}${isOwn ? " (you)" : ""}</div>
                 <div style="font-size:0.75rem; color:var(--text-muted);">${timeAgo(trade.created_at)}</div>
               </div>
             </div>
