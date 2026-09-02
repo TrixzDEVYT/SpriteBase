@@ -54,6 +54,7 @@
       <button class="tab" data-tab="sprites">Sprites</button>
       <button class="tab" data-tab="users">Users</button>
       <button class="tab" data-tab="news">News</button>
+      <button class="tab" data-tab="achievements">Achievements</button>
     </div>
 
     <!-- =================== SERIES =================== -->
@@ -254,6 +255,105 @@
         <tbody id="news-tbody"></tbody>
       </table>
     </div>
+
+    <!-- =================== ACHIEVEMENTS =================== -->
+    <div id="achievements-section" style="display:none;">
+      <div class="card">
+        <h3 style="margin-bottom: 1rem;" id="ach-form-title">New Achievement</h3>
+        <input type="hidden" id="ach-id" />
+        <div class="form-grid">
+          <div>
+            <label for="ach-code">Code (unique, used internally)</label>
+            <input type="text" id="ach-code" placeholder="collect_10" />
+          </div>
+          <div>
+            <label for="ach-name">Name</label>
+            <input type="text" id="ach-name" placeholder="Getting Started" />
+          </div>
+          <div class="form-full">
+            <label for="ach-description">Description</label>
+            <textarea id="ach-description" placeholder="Collect 10 Sprites."></textarea>
+          </div>
+          <div>
+            <label for="ach-category">Category</label>
+            <select id="ach-category">
+              <option value="getting_started">Getting Started</option>
+              <option value="collection">Collection</option>
+              <option value="trading">Trading</option>
+              <option value="community">Community</option>
+              <option value="exploration">Exploration</option>
+              <option value="secret">Secret</option>
+            </select>
+          </div>
+          <div>
+            <label for="ach-rarity">Rarity</label>
+            <select id="ach-rarity">
+              <option value="common">Common</option>
+              <option value="uncommon">Uncommon</option>
+              <option value="rare">Rare</option>
+              <option value="epic">Epic</option>
+              <option value="legendary">Legendary</option>
+            </select>
+          </div>
+          <div>
+            <label for="ach-requirement-type">Requirement type</label>
+            <select id="ach-requirement-type">
+              <option value="account_created">Account created</option>
+              <option value="sprite_count">Sprites owned (count)</option>
+              <option value="wanted_count">Sprites wanted (count)</option>
+              <option value="trade_completed_count">Trades completed (count)</option>
+              <option value="club_join_count">Clubs joined (count)</option>
+              <option value="club_create_count">Club created</option>
+              <option value="profile_complete">Profile completed</option>
+              <option value="manual">Manual only (no auto-check yet)</option>
+            </select>
+          </div>
+          <div>
+            <label for="ach-requirement-value">Requirement value</label>
+            <input type="number" id="ach-requirement-value" min="1" value="1" />
+          </div>
+          <div class="form-full">
+            <label for="ach-icon">Icon URL (optional)</label>
+            <input type="text" id="ach-icon" placeholder="https://..." />
+          </div>
+          <div>
+            <label style="display:flex; align-items:center; gap:0.5rem; font-weight:400;">
+              <input type="checkbox" id="ach-hidden" style="width:auto; margin:0;" />
+              Hidden until unlocked (secret achievement)
+            </label>
+          </div>
+          <div>
+            <label style="display:flex; align-items:center; gap:0.5rem; font-weight:400;">
+              <input type="checkbox" id="ach-active" checked style="width:auto; margin:0;" />
+              Active
+            </label>
+          </div>
+        </div>
+        <div id="ach-status"></div>
+        <div style="display:flex; gap:0.6rem;">
+          <button class="btn btn-primary" id="ach-save-btn">Save Achievement</button>
+          <button class="btn btn-ghost" id="ach-cancel-btn" style="display:none;">Cancel edit</button>
+        </div>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top: 1.2rem;">
+        <h3 style="margin:0;">All Achievements</h3>
+        <button class="btn btn-ghost" id="ach-refresh-btn">↻ Refresh</button>
+      </div>
+      <table class="admin-table" id="ach-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Category</th>
+            <th>Rarity</th>
+            <th>Requirement</th>
+            <th>Active</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="ach-tbody"></tbody>
+      </table>
+    </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -349,8 +449,10 @@
         document.getElementById("sprites-section").style.display = target === "sprites" ? "block" : "none";
         document.getElementById("users-section").style.display = target === "users" ? "block" : "none";
         document.getElementById("news-section").style.display = target === "news" ? "block" : "none";
+        document.getElementById("achievements-section").style.display = target === "achievements" ? "block" : "none";
         if (target === "users") loadVerifiedUsers();
         if (target === "news") loadNewsPosts();
+        if (target === "achievements") loadAchievements();
       });
     });
 
@@ -815,6 +917,132 @@
     });
 
     document.getElementById("news-refresh-btn").addEventListener("click", loadNewsPosts);
+
+    // ---------------- Achievements ----------------
+    function resetAchForm() {
+      document.getElementById("ach-id").value = "";
+      document.getElementById("ach-code").value = "";
+      document.getElementById("ach-name").value = "";
+      document.getElementById("ach-description").value = "";
+      document.getElementById("ach-category").value = "getting_started";
+      document.getElementById("ach-rarity").value = "common";
+      document.getElementById("ach-requirement-type").value = "account_created";
+      document.getElementById("ach-requirement-value").value = "1";
+      document.getElementById("ach-icon").value = "";
+      document.getElementById("ach-hidden").checked = false;
+      document.getElementById("ach-active").checked = true;
+      document.getElementById("ach-form-title").textContent = "New Achievement";
+      document.getElementById("ach-cancel-btn").style.display = "none";
+    }
+
+    document.getElementById("ach-cancel-btn").addEventListener("click", resetAchForm);
+
+    async function loadAchievements() {
+      const { data, error } = await db.from("achievements").select("*").order("category").order("requirement_value");
+      const tbody = document.getElementById("ach-tbody");
+
+      if (error) {
+        tbody.innerHTML = `<tr><td colspan="6">Error: ${error.message}</td></tr>`;
+        return;
+      }
+      if (!data || data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" style="color:var(--text-muted);">No achievements yet.</td></tr>`;
+        return;
+      }
+
+      window._achCache = data;
+
+      tbody.innerHTML = data.map(a => `
+        <tr>
+          <td>${a.is_hidden ? "🔒 " : ""}${a.name}</td>
+          <td>${a.category}</td>
+          <td><span class="badge badge-${a.rarity === 'common' ? 'common' : a.rarity === 'uncommon' ? 'raro' : a.rarity === 'rare' ? 'epico' : a.rarity === 'epic' ? 'legendario' : 'mitico'}">${a.rarity}</span></td>
+          <td>${a.requirement_type} ${a.requirement_value > 1 ? `(${a.requirement_value})` : ""}</td>
+          <td>${a.is_active ? "✅" : "—"}</td>
+          <td>
+            <div class="inline-actions">
+              <button class="btn btn-ghost" onclick='editAchievement("${a.id}")'>Edit</button>
+              <button class="btn btn-ghost" onclick="toggleAchActive('${a.id}', ${a.is_active})">${a.is_active ? "Disable" : "Enable"}</button>
+              <button class="btn btn-danger" onclick="deleteAchievement('${a.id}')">Delete</button>
+            </div>
+          </td>
+        </tr>
+      `).join("");
+    }
+
+    window.editAchievement = (id) => {
+      const a = window._achCache.find(x => x.id === id);
+      if (!a) return;
+      document.getElementById("ach-id").value = a.id;
+      document.getElementById("ach-code").value = a.code;
+      document.getElementById("ach-name").value = a.name;
+      document.getElementById("ach-description").value = a.description || "";
+      document.getElementById("ach-category").value = a.category;
+      document.getElementById("ach-rarity").value = a.rarity;
+      document.getElementById("ach-requirement-type").value = a.requirement_type;
+      document.getElementById("ach-requirement-value").value = a.requirement_value;
+      document.getElementById("ach-icon").value = a.icon_url || "";
+      document.getElementById("ach-hidden").checked = a.is_hidden;
+      document.getElementById("ach-active").checked = a.is_active;
+      document.getElementById("ach-form-title").textContent = "Edit Achievement";
+      document.getElementById("ach-cancel-btn").style.display = "inline-flex";
+    };
+
+    window.toggleAchActive = async (id, current) => {
+      await db.from("achievements").update({ is_active: !current }).eq("id", id);
+      loadAchievements();
+    };
+
+    window.deleteAchievement = async (id) => {
+      if (!confirm("Delete this achievement? Users who already unlocked it will keep it, but it will disappear from the catalog.")) return;
+      await db.from("achievements").delete().eq("id", id);
+      loadAchievements();
+    };
+
+    document.getElementById("ach-save-btn").addEventListener("click", async () => {
+      const statusEl = document.getElementById("ach-status");
+      const id = document.getElementById("ach-id").value;
+      const code = document.getElementById("ach-code").value.trim();
+      const name = document.getElementById("ach-name").value.trim();
+      const description = document.getElementById("ach-description").value.trim();
+      const category = document.getElementById("ach-category").value;
+      const rarity = document.getElementById("ach-rarity").value;
+      const requirement_type = document.getElementById("ach-requirement-type").value;
+      const requirement_value = parseInt(document.getElementById("ach-requirement-value").value, 10) || 1;
+      const icon_url = document.getElementById("ach-icon").value.trim();
+      const is_hidden = document.getElementById("ach-hidden").checked;
+      const is_active = document.getElementById("ach-active").checked;
+
+      if (!code || name.length < 2) {
+        statusEl.innerHTML = `<div class="status-message error">Code and name are required.</div>`;
+        return;
+      }
+      if (containsProfanity(name) || containsProfanity(description)) {
+        statusEl.innerHTML = `<div class="status-message error">Please remove inappropriate language.</div>`;
+        return;
+      }
+
+      const payload = {
+        code, name, description: description || null, category, rarity,
+        requirement_type, requirement_value, icon_url: icon_url || null,
+        is_hidden, is_active,
+      };
+
+      const { error } = id
+        ? await db.from("achievements").update(payload).eq("id", id)
+        : await db.from("achievements").insert(payload);
+
+      if (error) {
+        statusEl.innerHTML = `<div class="status-message error">${error.message}</div>`;
+        return;
+      }
+
+      statusEl.innerHTML = `<div class="status-message success">Saved.</div>`;
+      resetAchForm();
+      loadAchievements();
+    });
+
+    document.getElementById("ach-refresh-btn").addEventListener("click", loadAchievements);
     updateNewsPreview();
 
     (async () => {

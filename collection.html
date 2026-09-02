@@ -443,6 +443,7 @@
           .select()
           .single();
         if (data) ownedMap.set(spriteId, { rowId: data.id, level: data.level });
+        db.rpc("check_achievements").then(() => {});
       } else {
         const entry = ownedMap.get(spriteId);
         if (entry) {

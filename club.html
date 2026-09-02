@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SpriteBase — Club</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .club-hero-banner { width:100%; aspect-ratio:16/9; max-height:320px; object-fit:cover; border-radius:var(--radius); background:var(--surface); display:block; }
+    .club-hero-banner-empty { width:100%; aspect-ratio:16/9; max-height:320px; border-radius:var(--radius); background:linear-gradient(135deg,var(--surface),var(--bg)); border:1px solid var(--border); }
+    .club-hero-row { display:flex; align-items:flex-end; gap:1rem; margin-top:-40px; padding:0 1rem; flex-wrap:wrap; }
+    .club-hero-icon { width:88px; height:88px; border-radius:16px; border:4px solid var(--bg); object-fit:cover; background:var(--surface); }
+    .club-hero-icon-empty { width:88px; height:88px; border-radius:16px; border:4px solid var(--bg); background:var(--accent); display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-size:2rem; color:white; }
+    .club-hero-name { font-family:var(--font-display); font-size:1.6rem; }
+    .club-hero-meta { color:var(--text-muted); font-size:0.85rem; margin-top:0.2rem; }
+    .club-actions { margin-left:auto; padding-bottom:0.4rem; display:flex; gap:0.6rem; }
+
+    .member-row { display:flex; justify-content:space-between; align-items:center; padding:0.7rem 0; border-bottom:1px solid var(--border); flex-wrap:wrap; gap:0.5rem; }
+    .member-row:last-child { border-bottom:none; }
+    .role-badge { font-size:0.7rem; padding:0.15rem 0.5rem; border-radius:999px; text-transform:capitalize; }
+    .role-owner { background:rgba(255,165,60,0.18); color:var(--rarity-legendary); }
+    .role-officer { background:rgba(77,166,255,0.18); color:var(--rarity-rare); }
+    .role-member { background:rgba(156,163,175,0.18); color:var(--rarity-common); }
+
+    .goal-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1.2rem; margin-bottom:1rem; }
+    .goal-progress-track { height:8px; border-radius:999px; background:var(--bg); overflow:hidden; margin-top:0.6rem; }
+    .goal-progress-fill { height:100%; background:var(--accent); border-radius:999px; }
+  </style>
+</head>
+<body>
+  <div id="site-header"></div>
+
+  <div class="page">
+    <div id="club-content"><p style="color:var(--text-muted);">Loading club...</p></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabaseClient.js"></script>
+  <script src="profanityFilter.js"></script>
+  <script src="spriteType.js"></script>
+  <script src="auth.js"></script>
+  <script>
+    let currentUser = null;
+    let club = null;
+    let myRole = null; // null | 'owner' | 'officer' | 'member'
+    let myMembership = null;
+
+    const RARITY_LABELS = { common: "Common", raro: "Rare", epico: "Epic", legendario: "Legendary", mitico: "Mythic" };
+
+    function getSlug() {
+      return new URLSearchParams(window.location.search).get("slug");
+    }
+
+    async function loadClub() {
+      const slug = getSlug();
+      const contentEl = document.getElementById("club-content");
+      if (!slug) {
+        contentEl.innerHTML = `<div class="empty-state">No club specified.</div>`;
+        return;
+      }
+
+      const { data, error } = await db.from("clubs").select("*").eq("slug", slug).maybeSingle();
+      if (error || !data) {
+        contentEl.innerHTML = `<div class="empty-state">Club not found, or it's private and you're not a member.</div>`;
+        return;
+      }
+      club = data;
+
+      const { data: membership } = await db
+        .from("club_members")
+        .select("role")
+        .eq("club_id", club.id)
+        .eq("user_id", currentUser.id)
+        .maybeSingle();
+      myMembership = membership;
+      myRole = membership?.role || null;
+
+      renderShell();
+      await renderOverview();
+    }
+
+    function renderShell() {
+      const bannerHtml = club.banner_url
+        ? `<img src="${club.banner_url}" class="club-hero-banner" onerror="this.outerHTML='<div class=\\'club-hero-banner-empty\\'></div>'" />`
+        : `<div class="club-hero-banner-empty"></div>`;
+      const iconHtml = club.icon_url
+        ? `<img src="${club.icon_url}" class="club-hero-icon" onerror="this.outerHTML='<div class=\\'club-hero-icon-empty\\'>${club.name.charAt(0).toUpperCase()}</div>'" />`
+        : `<div class="club-hero-icon-empty">${club.name.charAt(0).toUpperCase()}</div>`;
+
+      document.getElementById("club-content").innerHTML = `
+        ${bannerHtml}
+        <div class="club-hero-row">
+          ${iconHtml}
+          <div>
+            <div class="club-hero-name">${club.name}</div>
+            <div class="club-hero-meta">${club.visibility} club · Created ${new Date(club.created_at).toLocaleDateString()}</div>
+          </div>
+          <div class="club-actions" id="club-action-buttons"></div>
+        </div>
+
+        <div class="tabs" style="margin-top:1.5rem;">
+          <button class="tab active" data-tab="overview">Overview</button>
+          <button class="tab" data-tab="members">Members</button>
+          <button class="tab" data-tab="collection">Collection</button>
+          <button class="tab" data-tab="goals">Goals</button>
+        </div>
+
+        <div id="tab-overview"></div>
+        <div id="tab-members" style="display:none;"></div>
+        <div id="tab-collection" style="display:none;"></div>
+        <div id="tab-goals" style="display:none;"></div>
+      `;
+
+      document.querySelectorAll(".tab").forEach(tab => {
+        tab.addEventListener("click", () => {
+          document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+          tab.classList.add("active");
+          ["overview", "members", "collection", "goals"].forEach(t => {
+            document.getElementById(`tab-${t}`).style.display = t === tab.dataset.tab ? "block" : "none";
+          });
+          if (tab.dataset.tab === "members") renderMembers();
+          if (tab.dataset.tab === "collection") renderCollection();
+          if (tab.dataset.tab === "goals") renderGoals();
+        });
+      });
+
+      renderActionButtons();
+    }
+
+    function renderActionButtons() {
+      const el = document.getElementById("club-action-buttons");
+
+      if (myRole) {
+        el.innerHTML = `
+          ${myRole !== "owner" ? `<button class="btn btn-ghost" id="leave-club-btn">Leave Club</button>` : `<span class="role-badge role-owner">You are the Owner</span>`}
+          ${myRole === "owner" ? `<button class="btn btn-danger" id="delete-club-btn">Delete Club</button>` : ""}
+        `;
+        const leaveBtn = document.getElementById("leave-club-btn");
+        if (leaveBtn) leaveBtn.addEventListener("click", async () => {
+          if (!confirm("Leave this club?")) return;
+          await db.from("club_members").delete().eq("club_id", club.id).eq("user_id", currentUser.id);
+          window.location.href = "clubs.html";
+        });
+        const deleteBtn = document.getElementById("delete-club-btn");
+        if (deleteBtn) deleteBtn.addEventListener("click", async () => {
+          if (!confirm(`Delete "${club.name}" permanently? This can't be undone.`)) return;
+          await db.from("clubs").delete().eq("id", club.id);
+          window.location.href = "clubs.html";
+        });
+        return;
+      }
+
+      if (club.visibility === "public") {
+        el.innerHTML = `<button class="btn btn-primary" id="join-club-btn">+ Join Club</button>`;
+        document.getElementById("join-club-btn").addEventListener("click", async () => {
+          const { error } = await db.from("club_members").insert({ club_id: club.id, user_id: currentUser.id, role: "member" });
+          if (!error) {
+            await db.rpc("check_achievements");
+            myRole = "member";
+            renderActionButtons();
+          }
+        });
+      } else if (club.visibility === "request") {
+        el.innerHTML = `<button class="btn btn-primary" id="request-join-btn">Request to Join</button>`;
+        document.getElementById("request-join-btn").addEventListener("click", async () => {
+          const { error } = await db.from("club_join_requests").insert({ club_id: club.id, user_id: currentUser.id });
+          const btn = document.getElementById("request-join-btn");
+          if (!error) {
+            btn.textContent = "Request Sent";
+            btn.disabled = true;
+          }
+        });
+      } else {
+        el.innerHTML = `<span style="color:var(--text-muted); font-size:0.85rem;">🔒 Private club — invite only</span>`;
+      }
+    }
+
+    // ---------------- Overview ----------------
+    async function renderOverview() {
+      const el = document.getElementById("tab-overview");
+      const { data: stats } = await db.from("club_stats").select("*").eq("club_id", club.id).maybeSingle();
+
+      el.innerHTML = `
+        <div class="stats-grid">
+          <div class="stat-card"><div class="stat-value">${stats?.member_count ?? 0}</div><div class="stat-label">Members</div></div>
+          <div class="stat-card"><div class="stat-value">${new Date(club.created_at).toLocaleDateString(undefined, { month: "short", year: "numeric" })}</div><div class="stat-label">Founded</div></div>
+        </div>
+        <div class="card">
+          <h3 style="margin-bottom:0.6rem;">About</h3>
+          <p style="color:var(--text-muted); margin:0;">${club.description || "No description yet."}</p>
+        </div>
+      `;
+    }
+
+    // ---------------- Members ----------------
+    async function renderMembers() {
+      const el = document.getElementById("tab-members");
+      el.innerHTML = `<p style="color:var(--text-muted);">Loading members...</p>`;
+
+      const canManage = myRole === "owner" || myRole === "officer";
+
+      const [{ data: members }, { data: pendingRequests }] = await Promise.all([
+        db.from("club_members").select("user_id, role, joined_at, profiles(username, avatar_url)").eq("club_id", club.id).order("joined_at"),
+        canManage
+          ? db.from("club_join_requests").select("id, user_id, requested_at, profiles(username)").eq("club_id", club.id).eq("status", "pending")
+          : Promise.resolve({ data: [] }),
+      ]);
+
+      let html = "";
+
+      if (canManage && pendingRequests && pendingRequests.length > 0) {
+        html += `<div class="card" style="margin-bottom:1.2rem;"><h3 style="margin-bottom:0.8rem;">Pending Requests</h3>`;
+        html += pendingRequests.map(r => `
+          <div class="member-row">
+            <span>@${r.profiles?.username || "user"}</span>
+            <div style="display:flex; gap:0.5rem;">
+              <button class="btn btn-primary accept-request-btn" data-id="${r.id}" style="padding:0.3rem 0.8rem; font-size:0.85rem;">Accept</button>
+              <button class="btn btn-ghost reject-request-btn" data-id="${r.id}" style="padding:0.3rem 0.8rem; font-size:0.85rem;">Reject</button>
+            </div>
+          </div>
+        `).join("");
+        html += `</div>`;
+      }
+
+      if (canManage) {
+        html += `
+          <div class="card" style="margin-bottom:1.2rem;">
+            <h3 style="margin-bottom:0.6rem;">Invite a User</h3>
+            <div style="display:flex; gap:0.6rem; flex-wrap:wrap;">
+              <input type="text" id="invite-username-input" placeholder="Username" style="flex:1; min-width:160px; margin-bottom:0;" />
+              <button class="btn btn-primary" id="send-invite-btn">Send Invite</button>
+            </div>
+            <div id="invite-status"></div>
+          </div>
+        `;
+      }
+
+      html += `<div class="card"><h3 style="margin-bottom:0.6rem;">Members (${members?.length ?? 0})</h3>`;
+      html += (members || []).map(m => `
+        <div class="member-row">
+          <div style="display:flex; align-items:center; gap:0.6rem;">
+            <a href="u.html?u=${encodeURIComponent(m.profiles?.username || '')}" style="color:inherit; text-decoration:none; font-weight:600;">@${m.profiles?.username || "user"}</a>
+            <span class="role-badge role-${m.role}">${m.role}</span>
+          </div>
+          ${canManage && m.role !== "owner" && m.user_id !== currentUser.id ? `
+            <div style="display:flex; gap:0.4rem;">
+              ${myRole === "owner" ? `<button class="btn btn-ghost promote-btn" data-id="${m.user_id}" data-role="${m.role === 'officer' ? 'member' : 'officer'}" style="padding:0.3rem 0.7rem; font-size:0.8rem;">${m.role === "officer" ? "Demote" : "Promote"}</button>` : ""}
+              <button class="btn btn-danger remove-member-btn" data-id="${m.user_id}" style="padding:0.3rem 0.7rem; font-size:0.8rem;">Remove</button>
+            </div>
+          ` : ""}
+        </div>
+      `).join("");
+      html += `</div>`;
+
+      el.innerHTML = html;
+
+      el.querySelectorAll(".accept-request-btn").forEach(btn => btn.addEventListener("click", async () => {
+        await db.rpc("resolve_join_request", { p_request_id: btn.dataset.id, p_accept: true });
+        renderMembers();
+      }));
+      el.querySelectorAll(".reject-request-btn").forEach(btn => btn.addEventListener("click", async () => {
+        await db.rpc("resolve_join_request", { p_request_id: btn.dataset.id, p_accept: false });
+        renderMembers();
+      }));
+      el.querySelectorAll(".promote-btn").forEach(btn => btn.addEventListener("click", async () => {
+        await db.from("club_members").update({ role: btn.dataset.role }).eq("club_id", club.id).eq("user_id", btn.dataset.id);
+        renderMembers();
+      }));
+      el.querySelectorAll(".remove-member-btn").forEach(btn => btn.addEventListener("click", async () => {
+        if (!confirm("Remove this member?")) return;
+        await db.from("club_members").delete().eq("club_id", club.id).eq("user_id", btn.dataset.id);
+        renderMembers();
+      }));
+
+      const sendInviteBtn = document.getElementById("send-invite-btn");
+      if (sendInviteBtn) sendInviteBtn.addEventListener("click", async () => {
+        const statusEl = document.getElementById("invite-status");
+        const username = document.getElementById("invite-username-input").value.trim();
+        if (!username) return;
+
+        const { data: profile } = await db.from("profiles").select("id").ilike("username", username).maybeSingle();
+        if (!profile) {
+          statusEl.innerHTML = `<div class="status-message error">User not found.</div>`;
+          return;
+        }
+
+        const { error } = await db.from("club_invites").insert({
+          club_id: club.id, invited_user_id: profile.id, invited_by: currentUser.id,
+        });
+
+        statusEl.innerHTML = error
+          ? `<div class="status-message error">${error.message}</div>`
+          : `<div class="status-message success">Invite sent!</div>`;
+        document.getElementById("invite-username-input").value = "";
+      });
+    }
+
+    // ---------------- Collection ----------------
+    async function renderCollection() {
+      const el = document.getElementById("tab-collection");
+      el.innerHTML = `<p style="color:var(--text-muted);">Loading collection...</p>`;
+
+      const [{ data: collective }, { data: allSprites }] = await Promise.all([
+        db.from("club_collective_collection").select("sprite_id, owners_count").eq("club_id", club.id),
+        db.from("sprites").select("id, variant_name, rarity, image_url").eq("is_active", true),
+      ]);
+
+      const ownedSet = new Map((collective || []).map(c => [c.sprite_id, c.owners_count]));
+      const total = allSprites?.length ?? 0;
+      const represented = ownedSet.size;
+      const percent = total > 0 ? Math.round((represented / total) * 100) : 0;
+
+      const grid = (allSprites || []).map(s => {
+        const ownersCount = ownedSet.get(s.id);
+        const isOwned = ownersCount > 0;
+        return `
+          <div class="sprite-card rarity-${s.rarity}" style="${isOwned ? "" : "opacity:0.35;"}">
+            <span class="badge badge-${s.rarity}">${RARITY_LABELS[s.rarity] || s.rarity}</span>
+            ${s.image_url ? `<img src="${s.image_url}" style="width:100%; aspect-ratio:1; object-fit:cover; border-radius:10px; margin-top:0.6rem;" onerror="this.style.display='none'" />` : ""}
+            <div class="sprite-card-name">${s.variant_name}</div>
+            ${isOwned ? `<div style="font-size:0.78rem; color:var(--text-muted);">${ownersCount} member${ownersCount > 1 ? "s" : ""} own this</div>` : `<div style="font-size:0.78rem; color:var(--text-muted);">Missing</div>`}
+          </div>
+        `;
+      }).join("");
+
+      el.innerHTML = `
+        <div class="card" style="margin-bottom:1.2rem;">
+          <div style="display:flex; justify-content:space-between; font-size:0.9rem; margin-bottom:0.4rem;">
+            <strong>${represented} / ${total} Sprites represented</strong>
+            <span style="color:var(--text-muted);">${percent}%</span>
+          </div>
+          <div class="progress-bar-track"><div class="progress-bar-fill" style="width:${percent}%;"></div></div>
+        </div>
+        <div class="sprite-grid">${grid}</div>
+      `;
+    }
+
+    // ---------------- Goals ----------------
+    async function renderGoals() {
+      const el = document.getElementById("tab-goals");
+      el.innerHTML = `<p style="color:var(--text-muted);">Loading goals...</p>`;
+
+      const canManage = myRole === "owner" || myRole === "officer";
+
+      const { data: goals, error } = await db.from("club_goals").select("*").eq("club_id", club.id).order("created_at", { ascending: false });
+
+      if (error) {
+        el.innerHTML = `<div class="status-message error">${error.message}</div>`;
+        return;
+      }
+
+      let html = "";
+
+      if (canManage) {
+        html += `
+          <div class="card" style="margin-bottom:1.2rem;">
+            <h3 style="margin-bottom:0.8rem;">New Goal</h3>
+            <label for="goal-name">Name</label>
+            <input type="text" id="goal-name" placeholder="Complete the Storm Set" maxlength="100" />
+            <label for="goal-type">Type</label>
+            <select id="goal-type">
+              <option value="unique_sprites">Collect X unique Sprites (club-wide)</option>
+              <option value="member_count">Reach X members</option>
+              <option value="completed_trades">Complete X trades (members combined)</option>
+            </select>
+            <label for="goal-target">Target value</label>
+            <input type="number" id="goal-target" min="1" value="10" />
+            <div id="goal-status"></div>
+            <button class="btn btn-primary" id="create-goal-btn">Create Goal</button>
+          </div>
+        `;
+      }
+
+      html += `<div id="goals-list"></div>`;
+      el.innerHTML = html;
+
+      const listEl = document.getElementById("goals-list");
+      if (!goals || goals.length === 0) {
+        listEl.innerHTML = `<div class="empty-state">No goals yet.</div>`;
+      } else {
+        listEl.innerHTML = `<p style="color:var(--text-muted); font-size:0.85rem;">Loading progress...</p>`;
+        const cards = await Promise.all(goals.map(async (g) => {
+          if (g.status === "active") await db.rpc("refresh_goal_status", { p_goal_id: g.id });
+          const { data: progress } = await db.rpc("get_goal_progress", { p_goal_id: g.id });
+          const percent = Math.min(100, Math.round(((progress || 0) / g.target_value) * 100));
+          return `
+            <div class="goal-card">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div style="font-family:var(--font-display); font-size:1.1rem;">${g.name}</div>
+                ${g.status === "completed" ? `<span class="trade-status-badge trade-status-active">🏆 Completed</span>` : ""}
+              </div>
+              ${g.description ? `<p style="color:var(--text-muted); font-size:0.88rem; margin:0.4rem 0;">${g.description}</p>` : ""}
+              <div style="font-size:0.85rem; color:var(--text-muted);">${progress || 0} / ${g.target_value}</div>
+              <div class="goal-progress-track"><div class="goal-progress-fill" style="width:${percent}%;"></div></div>
+            </div>
+          `;
+        }));
+        listEl.innerHTML = cards.join("");
+      }
+
+      const createGoalBtn = document.getElementById("create-goal-btn");
+      if (createGoalBtn) createGoalBtn.addEventListener("click", async () => {
+        const statusEl = document.getElementById("goal-status");
+        const name = document.getElementById("goal-name").value.trim();
+        const goal_type = document.getElementById("goal-type").value;
+        const target_value = parseInt(document.getElementById("goal-target").value, 10);
+
+        if (name.length < 3 || !target_value || target_value < 1) {
+          statusEl.innerHTML = `<div class="status-message error">Fill in a valid name and target.</div>`;
+          return;
+        }
+
+        const { error } = await db.from("club_goals").insert({ club_id: club.id, name, goal_type, target_value });
+        if (error) {
+          statusEl.innerHTML = `<div class="status-message error">${error.message}</div>`;
+          return;
+        }
+        renderGoals();
+      });
+    }
+
+    (async () => {
+      currentUser = await requireAuth();
+      if (!currentUser) return;
+
+      await renderNav(null);
+      await loadClub();
+    })();
+  </script>
+</body>
+</html>

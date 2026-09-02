@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SpriteBase — Clubs</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .club-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; }
+    .club-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); overflow: hidden; transition: transform 0.15s ease;
+    }
+    .club-card:hover { transform: translateY(-3px); }
+    .club-banner { width: 100%; aspect-ratio: 16/9; object-fit: cover; background: var(--bg); display: block; }
+    .club-banner-empty { width: 100%; aspect-ratio: 16/9; background: linear-gradient(135deg, var(--surface), var(--bg)); }
+    .club-card-body { padding: 1rem; }
+    .club-card-top { display: flex; align-items: center; gap: 0.6rem; margin-top: -32px; padding: 0 1rem; }
+    .club-icon { width: 52px; height: 52px; border-radius: 12px; border: 3px solid var(--surface); object-fit: cover; background: var(--bg); }
+    .club-icon-empty {
+      width: 52px; height: 52px; border-radius: 12px; border: 3px solid var(--surface);
+      background: var(--accent); display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-display); color: white; font-size: 1.3rem;
+    }
+    .club-name { font-family: var(--font-display); font-size: 1.1rem; margin-top: 0.5rem; }
+    .club-visibility-badge {
+      font-size: 0.7rem; padding: 0.15rem 0.5rem; border-radius: 999px;
+      background: rgba(139,92,246,0.15); color: var(--accent); text-transform: capitalize;
+    }
+    .club-desc { font-size: 0.85rem; color: var(--text-muted); margin: 0.5rem 0; min-height: 2.6em; }
+    .club-meta { font-size: 0.78rem; color: var(--text-muted); }
+  </style>
+</head>
+<body>
+  <div id="site-header"></div>
+
+  <div class="page">
+    <div class="top-header">
+      <div>
+        <h1>Clubs</h1>
+        <p>Join a community of collectors, or start your own.</p>
+      </div>
+      <div class="top-header-actions">
+        <button class="btn btn-primary" id="create-club-btn">+ Create Club</button>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="browse">Browse</button>
+      <button class="tab" data-tab="mine">My Clubs</button>
+      <button class="tab" data-tab="rankings">Rankings</button>
+    </div>
+
+    <div id="browse-section">
+      <input type="text" id="search-input" placeholder="Search clubs..." style="max-width:400px;" />
+      <div id="clubs-grid" class="club-grid"></div>
+    </div>
+
+    <div id="mine-section" style="display:none;">
+      <div id="mine-grid" class="club-grid"></div>
+    </div>
+
+    <div id="rankings-section" style="display:none;">
+      <table class="admin-table" id="rankings-table" style="width:100%;">
+        <thead>
+          <tr><th>Club</th><th>Members</th><th>Unique Sprites</th><th>Goals Completed</th></tr>
+        </thead>
+        <tbody id="rankings-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ===================== Create Club modal-ish card ===================== -->
+  <div id="create-club-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:50; align-items:center; justify-content:center; padding:1rem;">
+    <div class="card" style="max-width: 460px; width:100%; max-height:90vh; overflow-y:auto;">
+      <h3 style="margin-bottom:1rem;">Create a Club</h3>
+      <label for="new-club-name">Name</label>
+      <input type="text" id="new-club-name" placeholder="Storm Chasers" maxlength="60" />
+      <label for="new-club-slug">Slug (used in the URL)</label>
+      <input type="text" id="new-club-slug" placeholder="storm-chasers" />
+      <label for="new-club-description">Description</label>
+      <textarea id="new-club-description" placeholder="What's this club about?" maxlength="1000"></textarea>
+      <label for="new-club-icon">Icon URL (optional)</label>
+      <input type="text" id="new-club-icon" placeholder="https://..." />
+      <label for="new-club-banner">Banner URL (optional, 16:9)</label>
+      <input type="text" id="new-club-banner" placeholder="https://..." />
+      <label for="new-club-visibility">Visibility</label>
+      <select id="new-club-visibility">
+        <option value="public">Public — anyone can join instantly</option>
+        <option value="request">Request — users must be approved</option>
+        <option value="private">Private — invite only</option>
+      </select>
+      <div id="create-club-status"></div>
+      <div style="display:flex; gap:0.6rem;">
+        <button class="btn btn-primary" id="submit-club-btn">Create Club</button>
+        <button class="btn btn-ghost" id="cancel-club-btn">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabaseClient.js"></script>
+  <script src="profanityFilter.js"></script>
+  <script src="auth.js"></script>
+  <script>
+    let currentUser = null;
+    let allClubs = [];
+    let myClubIds = new Set();
+
+    function slugify(text) {
+      return text.toLowerCase().trim().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-");
+    }
+
+    document.getElementById("new-club-name").addEventListener("input", (e) => {
+      const slugField = document.getElementById("new-club-slug");
+      if (!slugField.dataset.touched) slugField.value = slugify(e.target.value);
+    });
+    document.getElementById("new-club-slug").addEventListener("input", (e) => {
+      e.target.dataset.touched = "true";
+    });
+
+    document.querySelectorAll(".tab").forEach(tab => {
+      tab.addEventListener("click", () => {
+        document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+        tab.classList.add("active");
+        const target = tab.dataset.tab;
+        document.getElementById("browse-section").style.display = target === "browse" ? "block" : "none";
+        document.getElementById("mine-section").style.display = target === "mine" ? "block" : "none";
+        document.getElementById("rankings-section").style.display = target === "rankings" ? "block" : "none";
+        if (target === "mine") renderMine();
+        if (target === "rankings") loadRankings();
+      });
+    });
+
+    function clubCardHtml(club, memberCount) {
+      const iconHtml = club.icon_url
+        ? `<img src="${club.icon_url}" class="club-icon" onerror="this.outerHTML='<div class=\\'club-icon-empty\\'>${club.name.charAt(0).toUpperCase()}</div>'" />`
+        : `<div class="club-icon-empty">${club.name.charAt(0).toUpperCase()}</div>`;
+      const bannerHtml = club.banner_url
+        ? `<img src="${club.banner_url}" class="club-banner" onerror="this.outerHTML='<div class=\\'club-banner-empty\\'></div>'" />`
+        : `<div class="club-banner-empty"></div>`;
+
+      return `
+        <a href="club.html?slug=${encodeURIComponent(club.slug)}" style="text-decoration:none; color:inherit;">
+          <div class="club-card">
+            ${bannerHtml}
+            <div class="club-card-top">${iconHtml}</div>
+            <div class="club-card-body">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div class="club-name">${club.name}</div>
+                <span class="club-visibility-badge">${club.visibility}</span>
+              </div>
+              <div class="club-desc">${club.description || "No description yet."}</div>
+              <div class="club-meta">${memberCount ?? 0} members</div>
+            </div>
+          </div>
+        </a>
+      `;
+    }
+
+    async function loadClubs() {
+      const grid = document.getElementById("clubs-grid");
+      grid.innerHTML = `<p style="color:var(--text-muted);">Loading clubs...</p>`;
+
+      const [{ data: clubs, error }, { data: stats }, { data: myMemberships }] = await Promise.all([
+        db.from("clubs").select("*").order("created_at", { ascending: false }),
+        db.from("club_stats").select("club_id, member_count"),
+        db.from("club_members").select("club_id").eq("user_id", currentUser.id),
+      ]);
+
+      if (error) {
+        grid.innerHTML = `<div class="status-message error">${error.message}</div>`;
+        return;
+      }
+
+      allClubs = clubs || [];
+      myClubIds = new Set((myMemberships || []).map(m => m.club_id));
+      const statsMap = new Map((stats || []).map(s => [s.club_id, s.member_count]));
+
+      renderBrowse(statsMap);
+    }
+
+    function renderBrowse(statsMap) {
+      const grid = document.getElementById("clubs-grid");
+      const term = document.getElementById("search-input").value.trim().toLowerCase();
+      const filtered = allClubs.filter(c => c.name.toLowerCase().includes(term));
+
+      if (filtered.length === 0) {
+        grid.innerHTML = `<div class="empty-state">No clubs found. Be the first to create one!</div>`;
+        return;
+      }
+
+      grid.innerHTML = filtered.map(c => clubCardHtml(c, statsMap.get(c.id))).join("");
+    }
+
+    document.getElementById("search-input").addEventListener("input", async () => {
+      const { data: stats } = await db.from("club_stats").select("club_id, member_count");
+      renderBrowse(new Map((stats || []).map(s => [s.club_id, s.member_count])));
+    });
+
+    async function renderMine() {
+      const grid = document.getElementById("mine-grid");
+      const mine = allClubs.filter(c => myClubIds.has(c.id));
+
+      if (mine.length === 0) {
+        grid.innerHTML = `<div class="empty-state">You haven't joined any clubs yet.</div>`;
+        return;
+      }
+
+      const { data: stats } = await db.from("club_stats").select("club_id, member_count");
+      const statsMap = new Map((stats || []).map(s => [s.club_id, s.member_count]));
+      grid.innerHTML = mine.map(c => clubCardHtml(c, statsMap.get(c.id))).join("");
+    }
+
+    async function loadRankings() {
+      const tbody = document.getElementById("rankings-tbody");
+      const { data, error } = await db
+        .from("club_rankings")
+        .select("*")
+        .order("unique_sprites_collected", { ascending: false });
+
+      if (error) {
+        tbody.innerHTML = `<tr><td colspan="4">Error: ${error.message}</td></tr>`;
+        return;
+      }
+      if (!data || data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" style="color:var(--text-muted);">No public clubs yet.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = data.map(r => `
+        <tr>
+          <td><a href="club.html?slug=${encodeURIComponent(r.slug)}" style="color:inherit;">${r.name}</a></td>
+          <td>${r.member_count}</td>
+          <td>${r.unique_sprites_collected}</td>
+          <td>${r.goals_completed}</td>
+        </tr>
+      `).join("");
+    }
+
+    // ---------------- Create club ----------------
+    document.getElementById("create-club-btn").addEventListener("click", () => {
+      document.getElementById("create-club-overlay").style.display = "flex";
+    });
+    document.getElementById("cancel-club-btn").addEventListener("click", () => {
+      document.getElementById("create-club-overlay").style.display = "none";
+    });
+
+    document.getElementById("submit-club-btn").addEventListener("click", async () => {
+      const statusEl = document.getElementById("create-club-status");
+      const name = document.getElementById("new-club-name").value.trim();
+      const slug = document.getElementById("new-club-slug").value.trim();
+      const description = document.getElementById("new-club-description").value.trim();
+      const icon_url = document.getElementById("new-club-icon").value.trim();
+      const banner_url = document.getElementById("new-club-banner").value.trim();
+      const visibility = document.getElementById("new-club-visibility").value;
+
+      if (name.length < 2 || !slug) {
+        statusEl.innerHTML = `<div class="status-message error">Name and slug are required.</div>`;
+        return;
+      }
+      if (containsProfanity(name) || containsProfanity(description)) {
+        statusEl.innerHTML = `<div class="status-message error">Please remove inappropriate language.</div>`;
+        return;
+      }
+
+      const { data: club, error } = await db
+        .from("clubs")
+        .insert({
+          name, slug, description: description || null,
+          icon_url: icon_url || null, banner_url: banner_url || null,
+          visibility, owner_id: currentUser.id,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        statusEl.innerHTML = `<div class="status-message error">${error.message}</div>`;
+        return;
+      }
+
+      // El trigger trg_new_club_owner ya inserta al creador como Owner
+      await db.rpc("check_achievements");
+
+      window.location.href = `club.html?slug=${encodeURIComponent(club.slug)}`;
+    });
+
+    (async () => {
+      currentUser = await requireAuth();
+      if (!currentUser) return;
+
+      await renderNav("clubs.html");
+      await loadClubs();
+    })();
+  </script>
+</body>
+</html>

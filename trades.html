@@ -783,6 +783,7 @@
           <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
             <button class="btn btn-ghost edit-btn" style="padding:0.4rem 0.8rem;">✎ Edit</button>
             ${isActive ? `<button class="btn btn-ghost pause-btn" style="padding:0.4rem 0.8rem;">◌ Pause</button>` : ""}
+            ${isActive ? `<button class="btn btn-ghost complete-btn" style="padding:0.4rem 0.8rem;">✓ Mark Completed</button>` : ""}
             ${isCancelled ? `<button class="btn btn-ghost reactivate-btn" style="padding:0.4rem 0.8rem;">↻ Reactivate</button>` : ""}
             <button class="btn btn-danger delete-btn" style="padding:0.4rem 0.8rem;">🗑 Delete</button>
           </div>
@@ -838,6 +839,16 @@
         if (pauseBtn) {
           pauseBtn.addEventListener("click", async () => {
             await db.from("trades").update({ status: "cancelled" }).eq("id", trade.id);
+            loadMyTrades();
+          });
+        }
+
+        const completeBtn = card.querySelector(".complete-btn");
+        if (completeBtn) {
+          completeBtn.addEventListener("click", async () => {
+            if (!confirm(`Mark "${trade.title}" as completed? This means the trade actually happened.`)) return;
+            await db.from("trades").update({ status: "completed" }).eq("id", trade.id);
+            await db.rpc("check_achievements");
             loadMyTrades();
           });
         }
@@ -1026,6 +1037,7 @@
       }
 
       statusEl.innerHTML = `<div class="status-message success">Trade posted!</div>`;
+      db.rpc("check_achievements").then(() => {});
       document.getElementById("trade-title").value = "";
       document.getElementById("trade-description").value = "";
       selectedOfferIds = new Set();

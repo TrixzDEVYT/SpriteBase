@@ -56,6 +56,7 @@ async function renderNav(activePage) {
     { href: "dashboard.html", label: "Dashboard" },
     { href: "collection.html", label: "Collection" },
     { href: "trades.html", label: "Trades" },
+    { href: "clubs.html", label: "Clubs" },
   ];
 
   if (await checkIsAdmin(session.user.id)) {

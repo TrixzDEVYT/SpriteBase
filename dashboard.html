@@ -72,6 +72,11 @@
       </div>
     </div>
 
+    <div id="invites-section" style="display:none; margin-bottom: 1.5rem;">
+      <div class="section-heading" style="margin-top:0;">🎟️ Club Invitations</div>
+      <div id="invites-list"></div>
+    </div>
+
     <div class="card">
       <h3 style="margin-bottom: 1rem;">Quick actions</h3>
       <div style="display:flex; gap: 0.8rem; flex-wrap: wrap;">
@@ -135,6 +140,38 @@
 
       document.getElementById("contact-type").value = profile?.contact_type || "discord";
       document.getElementById("contact-input").value = profile?.contact_value || "";
+
+      // Invitaciones a clubs pendientes
+      const { data: invites } = await db
+        .from("club_invites")
+        .select("id, expires_at, clubs(name, slug), profiles!club_invites_invited_by_fkey(username)")
+        .eq("invited_user_id", user.id)
+        .eq("status", "pending");
+
+      if (invites && invites.length > 0) {
+        document.getElementById("invites-section").style.display = "block";
+        document.getElementById("invites-list").innerHTML = invites.map(inv => `
+          <div class="card" style="margin-bottom:0.8rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;">
+            <div>
+              Invited to <strong>${inv.clubs?.name || "a club"}</strong> by @${inv.profiles?.username || "someone"}
+              ${inv.expires_at ? `<div style="font-size:0.78rem; color:var(--text-muted);">Expires ${new Date(inv.expires_at).toLocaleDateString()}</div>` : ""}
+            </div>
+            <div style="display:flex; gap:0.5rem;">
+              <button class="btn btn-primary accept-invite-btn" data-id="${inv.id}">Accept</button>
+              <button class="btn btn-ghost reject-invite-btn" data-id="${inv.id}">Reject</button>
+            </div>
+          </div>
+        `).join("");
+
+        document.querySelectorAll(".accept-invite-btn").forEach(btn => btn.addEventListener("click", async () => {
+          await db.rpc("respond_to_invite", { p_invite_id: btn.dataset.id, p_accept: true });
+          window.location.reload();
+        }));
+        document.querySelectorAll(".reject-invite-btn").forEach(btn => btn.addEventListener("click", async () => {
+          await db.rpc("respond_to_invite", { p_invite_id: btn.dataset.id, p_accept: false });
+          window.location.reload();
+        }));
+      }
 
       document.getElementById("save-contact-btn").addEventListener("click", async () => {
         const statusEl = document.getElementById("contact-status");
