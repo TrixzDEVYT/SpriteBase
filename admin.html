@@ -305,12 +305,18 @@
               <option value="club_join_count">Clubs joined (count)</option>
               <option value="club_create_count">Club created</option>
               <option value="profile_complete">Profile completed</option>
+              <option value="trade_with_verified_user">Traded with a verified user</option>
+              <option value="trade_with_specific_user">Traded with a specific username</option>
               <option value="manual">Manual only (no auto-check yet)</option>
             </select>
           </div>
           <div>
             <label for="ach-requirement-value">Requirement value</label>
             <input type="number" id="ach-requirement-value" min="1" value="1" />
+          </div>
+          <div class="form-full">
+            <label for="ach-requirement-target">Target username (only for "Traded with a specific username")</label>
+            <input type="text" id="ach-requirement-target" placeholder="e.g. Tryxie" />
           </div>
           <div class="form-full">
             <label for="ach-icon">Icon URL (optional)</label>
@@ -928,6 +934,7 @@
       document.getElementById("ach-rarity").value = "common";
       document.getElementById("ach-requirement-type").value = "account_created";
       document.getElementById("ach-requirement-value").value = "1";
+      document.getElementById("ach-requirement-target").value = "";
       document.getElementById("ach-icon").value = "";
       document.getElementById("ach-hidden").checked = false;
       document.getElementById("ach-active").checked = true;
@@ -982,6 +989,7 @@
       document.getElementById("ach-rarity").value = a.rarity;
       document.getElementById("ach-requirement-type").value = a.requirement_type;
       document.getElementById("ach-requirement-value").value = a.requirement_value;
+      document.getElementById("ach-requirement-target").value = a.requirement_target || "";
       document.getElementById("ach-icon").value = a.icon_url || "";
       document.getElementById("ach-hidden").checked = a.is_hidden;
       document.getElementById("ach-active").checked = a.is_active;
@@ -1024,6 +1032,7 @@
       const rarity = document.getElementById("ach-rarity").value;
       const requirement_type = document.getElementById("ach-requirement-type").value;
       const requirement_value = parseInt(document.getElementById("ach-requirement-value").value, 10) || 1;
+      const requirement_target = document.getElementById("ach-requirement-target").value.trim();
       const icon_url = document.getElementById("ach-icon").value.trim();
       const is_hidden = document.getElementById("ach-hidden").checked;
       const is_active = document.getElementById("ach-active").checked;
@@ -1039,8 +1048,8 @@
 
       const payload = {
         code, name, description: description || null, category, rarity,
-        requirement_type, requirement_value, icon_url: icon_url || null,
-        is_hidden, is_active,
+        requirement_type, requirement_value, requirement_target: requirement_target || null,
+        icon_url: icon_url || null, is_hidden, is_active,
       };
 
       const { error } = id
