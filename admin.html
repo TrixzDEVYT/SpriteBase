@@ -963,6 +963,7 @@
             <div class="inline-actions">
               <button class="btn btn-ghost" onclick='editAchievement("${a.id}")'>Edit</button>
               <button class="btn btn-ghost" onclick="toggleAchActive('${a.id}', ${a.is_active})">${a.is_active ? "Disable" : "Enable"}</button>
+              <button class="btn btn-ghost" onclick="promptGrant('${a.code}', '${a.name.replace(/'/g, "&apos;")}')">Grant to user</button>
               <button class="btn btn-danger" onclick="deleteAchievement('${a.id}')">Delete</button>
             </div>
           </td>
@@ -997,6 +998,20 @@
       if (!confirm("Delete this achievement? Users who already unlocked it will keep it, but it will disappear from the catalog.")) return;
       await db.from("achievements").delete().eq("id", id);
       loadAchievements();
+    };
+
+    window.promptGrant = async (code, name) => {
+      const username = prompt(`Grant "${name}" to which username?`);
+      if (!username) return;
+
+      const { data: profile } = await db.from("profiles").select("id").ilike("username", username).maybeSingle();
+      if (!profile) {
+        alert(`No user found with username "${username}".`);
+        return;
+      }
+
+      const { error } = await db.rpc("grant_achievement", { p_user_id: profile.id, p_achievement_code: code });
+      alert(error ? `Error: ${error.message}` : `Granted "${name}" to @${username}!`);
     };
 
     document.getElementById("ach-save-btn").addEventListener("click", async () => {
