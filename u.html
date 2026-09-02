@@ -92,7 +92,7 @@
 
       const { data: profile, error } = await db
         .from("profiles")
-        .select("id, username, avatar_url, banner_url, bio, contact_type, contact_value, created_at")
+        .select("id, username, avatar_url, banner_url, bio, contact_type, contact_value, created_at, featured_achievement_ids")
         .ilike("username", username)
         .maybeSingle();
 
@@ -101,7 +101,7 @@
         return;
       }
 
-      const [{ data: verifiedRow }, { data: ownedSprites }, { count: wantedCount }, { data: activeTrades }] = await Promise.all([
+      const [{ data: verifiedRow }, { data: ownedSprites }, { count: wantedCount }, { data: activeTrades }, { data: featuredAch }] = await Promise.all([
         db.from("verified_users").select("user_id").eq("user_id", profile.id).maybeSingle(),
         db.from("user_sprites_owned").select("sprites(variant_name, rarity, image_url)").eq("user_id", profile.id),
         db.from("user_sprites_wanted").select("*", { count: "exact", head: true }).eq("user_id", profile.id),
@@ -114,6 +114,9 @@
           .eq("user_id", profile.id)
           .eq("status", "active")
           .order("created_at", { ascending: false }),
+        (profile.featured_achievement_ids && profile.featured_achievement_ids.length > 0)
+          ? db.from("achievements").select("id, name, icon_url, rarity").in("id", profile.featured_achievement_ids)
+          : Promise.resolve({ data: [] }),
       ]);
 
       const ownedCount = ownedSprites?.length ?? 0;
@@ -192,6 +195,20 @@
           <div class="card" style="margin-bottom: 2rem;">
             <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:0.3rem;">Contact</div>
             <div>${contactLabel}: <strong>${profile.contact_value}</strong></div>
+          </div>
+        ` : ""}
+
+        ${featuredAch && featuredAch.length > 0 ? `
+          <div class="card" style="margin-bottom: 2rem;">
+            <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:0.6rem;">🏆 Featured Achievements</div>
+            <div style="display:flex; gap:0.6rem; flex-wrap:wrap;">
+              ${featuredAch.map(a => `
+                <div style="display:flex; align-items:center; gap:0.5rem; background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:0.5rem 0.8rem;">
+                  ${a.icon_url ? `<img src="${a.icon_url}" style="width:24px; height:24px; border-radius:6px; object-fit:cover;" onerror="this.style.display='none'" />` : `<span>🏆</span>`}
+                  <span style="font-size:0.85rem; font-weight:600;">${a.name}</span>
+                </div>
+              `).join("")}
+            </div>
           </div>
         ` : ""}
 
