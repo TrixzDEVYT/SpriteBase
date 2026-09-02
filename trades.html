@@ -846,8 +846,25 @@
         const completeBtn = card.querySelector(".complete-btn");
         if (completeBtn) {
           completeBtn.addEventListener("click", async () => {
-            if (!confirm(`Mark "${trade.title}" as completed? This means the trade actually happened.`)) return;
-            await db.from("trades").update({ status: "completed" }).eq("id", trade.id);
+            const partnerUsername = prompt(`Mark "${trade.title}" as completed. Who did you trade with? (their username, optional but unlocks trading achievements)`);
+            if (partnerUsername === null) return; // canceló
+
+            let completedWithId = null;
+            if (partnerUsername.trim()) {
+              const { data: partnerProfile } = await db
+                .from("profiles")
+                .select("id")
+                .ilike("username", partnerUsername.trim())
+                .maybeSingle();
+
+              if (!partnerProfile) {
+                alert(`No user found with username "${partnerUsername.trim()}". Marking as completed without a trade partner.`);
+              } else {
+                completedWithId = partnerProfile.id;
+              }
+            }
+
+            await db.from("trades").update({ status: "completed", completed_with_user_id: completedWithId }).eq("id", trade.id);
             await db.rpc("check_achievements");
             loadMyTrades();
           });
