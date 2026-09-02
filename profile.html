@@ -16,6 +16,31 @@
       background: var(--bg); border: 2px solid var(--border);
       object-fit: cover; display: block; margin-bottom: 0.8rem;
     }
+    .ach-category-heading {
+      font-family: var(--font-display); font-size: 1rem; margin: 1.2rem 0 0.6rem;
+    }
+    .ach-category-heading:first-child { margin-top: 0; }
+    .ach-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0.7rem; }
+    .ach-tile {
+      background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+      padding: 0.8rem; display: flex; gap: 0.7rem; align-items: flex-start;
+      opacity: 0.45;
+    }
+    .ach-tile.unlocked { opacity: 1; }
+    .ach-tile.unlocked.rarity-common { border-color: var(--rarity-common); }
+    .ach-tile.unlocked.rarity-uncommon { border-color: var(--success); }
+    .ach-tile.unlocked.rarity-rare { border-color: var(--rarity-rare); }
+    .ach-tile.unlocked.rarity-epic { border-color: var(--rarity-epic); }
+    .ach-tile.unlocked.rarity-legendary { border-color: var(--rarity-legendary); }
+    .ach-icon { width: 36px; height: 36px; border-radius: 8px; object-fit: cover; flex-shrink: 0; background: var(--surface); }
+    .ach-icon-placeholder {
+      width: 36px; height: 36px; border-radius: 8px; flex-shrink: 0;
+      background: var(--surface); display: flex; align-items: center; justify-content: center; font-size: 1.1rem;
+    }
+    .ach-tile-name { font-weight: 600; font-size: 0.9rem; }
+    .ach-tile-desc { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.15rem; }
+    .ach-tile-progress { font-size: 0.72rem; color: var(--text-muted); margin-top: 0.3rem; }
+    .ach-feature-check { margin-left: auto; width: auto; margin-top: 0.2rem; }
   </style>
 </head>
 <body>
@@ -66,6 +91,17 @@
 
       <div id="images-status"></div>
       <button class="btn btn-primary" id="save-images-btn">Save images</button>
+    </div>
+
+    <!-- ===================== Achievements ===================== -->
+    <div class="card" style="margin-bottom: 1.5rem;">
+      <h3 style="margin-bottom: 0.4rem;">Achievements</h3>
+      <p style="color: var(--text-muted); font-size: 0.85rem; margin-top:0; margin-bottom:1rem;">
+        Choose up to 5 to feature on your public profile.
+      </p>
+      <div id="achievements-list"><p style="color:var(--text-muted);">Loading...</p></div>
+      <div id="achievements-status"></div>
+      <button class="btn btn-primary" id="save-featured-btn" style="margin-top:1rem;">Save featured</button>
     </div>
 
     <!-- ===================== Change username ===================== -->
@@ -233,6 +269,111 @@
       window.location.href = "index.html";
     });
 
+    // ---------------- Achievements ----------------
+    const RARITY_ORDER_ACH = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4 };
+    let featuredIds = new Set();
+
+    async function loadAchievementsSection() {
+      await db.rpc("check_achievements"); // se asegura de que esté al día
+
+      const [{ data: catalog }, { data: unlocked }] = await Promise.all([
+        db.from("achievements").select("*").eq("is_active", true),
+        db.from("user_achievements").select("achievement_id, unlocked_at").eq("user_id", currentUser.id),
+      ]);
+
+      const unlockedMap = new Map((unlocked || []).map(u => [u.achievement_id, u.unlocked_at]));
+
+      // Progreso simple para los tipos de requisito basados en conteo
+      const [{ count: spriteCount }, { count: wantedCount }, { count: tradeCount }, { count: clubCount }] = await Promise.all([
+        db.from("user_sprites_owned").select("*", { count: "exact", head: true }).eq("user_id", currentUser.id),
+        db.from("user_sprites_wanted").select("*", { count: "exact", head: true }).eq("user_id", currentUser.id),
+        db.from("trades").select("*", { count: "exact", head: true }).eq("user_id", currentUser.id).eq("status", "completed"),
+        db.from("club_members").select("*", { count: "exact", head: true }).eq("user_id", currentUser.id),
+      ]);
+      const progressByType = {
+        sprite_count: spriteCount ?? 0,
+        wanted_count: wantedCount ?? 0,
+        trade_completed_count: tradeCount ?? 0,
+        club_join_count: clubCount ?? 0,
+      };
+
+      const byCategory = {};
+      (catalog || []).forEach(a => {
+        (byCategory[a.category] = byCategory[a.category] || []).push(a);
+      });
+
+      const categoryLabels = {
+        getting_started: "Getting Started", collection: "Collection", trading: "Trading",
+        community: "Community", exploration: "Exploration", secret: "Secret",
+      };
+
+      let html = "";
+      Object.entries(byCategory).forEach(([cat, items]) => {
+        items.sort((a, b) => (RARITY_ORDER_ACH[a.rarity] ?? 0) - (RARITY_ORDER_ACH[b.rarity] ?? 0));
+        html += `<div class="ach-category-heading">${categoryLabels[cat] || cat}</div><div class="ach-grid">`;
+        items.forEach(a => {
+          const isUnlocked = unlockedMap.has(a.id);
+          const isMystery = a.is_hidden && !isUnlocked;
+          const iconHtml = a.icon_url && !isMystery
+            ? `<img src="${a.icon_url}" class="ach-icon" onerror="this.style.display='none'" />`
+            : `<div class="ach-icon-placeholder">${isMystery ? "🔒" : "🏆"}</div>`;
+
+          const name = isMystery ? "???" : a.name;
+          const desc = isMystery ? "Hidden achievement — keep playing to discover it." : (a.description || "");
+
+          let progressHtml = "";
+          if (!isUnlocked && !isMystery && progressByType[a.requirement_type] !== undefined) {
+            const cur = Math.min(progressByType[a.requirement_type], a.requirement_value);
+            progressHtml = `<div class="ach-tile-progress">${cur} / ${a.requirement_value}</div>`;
+          } else if (isUnlocked) {
+            progressHtml = `<div class="ach-tile-progress">Unlocked ${new Date(unlockedMap.get(a.id)).toLocaleDateString()}</div>`;
+          }
+
+          html += `
+            <div class="ach-tile ${isUnlocked ? "unlocked rarity-" + a.rarity : ""}">
+              ${iconHtml}
+              <div style="flex:1;">
+                <div class="ach-tile-name">${name}</div>
+                <div class="ach-tile-desc">${desc}</div>
+                ${progressHtml}
+              </div>
+              ${isUnlocked ? `<input type="checkbox" class="ach-feature-check" data-id="${a.id}" ${featuredIds.has(a.id) ? "checked" : ""} title="Feature on public profile" />` : ""}
+            </div>
+          `;
+        });
+        html += `</div>`;
+      });
+
+      document.getElementById("achievements-list").innerHTML = html || `<p style="color:var(--text-muted);">No achievements available yet.</p>`;
+
+      document.querySelectorAll(".ach-feature-check").forEach(cb => {
+        cb.addEventListener("change", () => {
+          if (cb.checked) {
+            if (featuredIds.size >= 5) {
+              cb.checked = false;
+              alert("You can feature up to 5 achievements.");
+              return;
+            }
+            featuredIds.add(cb.dataset.id);
+          } else {
+            featuredIds.delete(cb.dataset.id);
+          }
+        });
+      });
+    }
+
+    document.getElementById("save-featured-btn").addEventListener("click", async () => {
+      const statusEl = document.getElementById("achievements-status");
+      const { error } = await db
+        .from("profiles")
+        .update({ featured_achievement_ids: [...featuredIds] })
+        .eq("id", currentUser.id);
+
+      statusEl.innerHTML = error
+        ? `<div class="status-message error">${error.message}</div>`
+        : `<div class="status-message success">Saved.</div>`;
+    });
+
     (async () => {
       currentUser = await requireAuth();
       if (!currentUser) return;
@@ -241,9 +382,12 @@
 
       const { data: profile } = await db
         .from("profiles")
-        .select("username, avatar_url, banner_url, bio")
+        .select("username, avatar_url, banner_url, bio, featured_achievement_ids")
         .eq("id", currentUser.id)
         .maybeSingle();
+
+      featuredIds = new Set(profile?.featured_achievement_ids || []);
+      loadAchievementsSection();
 
       document.getElementById("bio-input").value = profile?.bio || "";
       document.getElementById("save-bio-btn").addEventListener("click", async () => {
