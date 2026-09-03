@@ -66,6 +66,26 @@
       <div id="copy-status"></div>
     </div>
 
+    <!-- ===================== Contact info ===================== -->
+    <div class="card" style="margin-bottom: 1.5rem;">
+      <h3 style="margin-bottom: 0.4rem;">Contact info</h3>
+      <p style="color: var(--text-muted); font-size: 0.85rem; margin-top:0; margin-bottom: 1rem;">
+        Shown to other users on your trades so they can reach you. Leave blank to hide it.
+      </p>
+      <label for="contact-type">Platform</label>
+      <select id="contact-type">
+        <option value="discord">Discord</option>
+        <option value="twitter">Twitter / X</option>
+        <option value="instagram">Instagram</option>
+        <option value="email">Email</option>
+        <option value="other">Other</option>
+      </select>
+      <label for="contact-input">Username / handle</label>
+      <input type="text" id="contact-input" placeholder="username" maxlength="100" />
+      <div id="contact-status"></div>
+      <button class="btn btn-primary" id="save-contact-btn">Save</button>
+    </div>
+
     <!-- ===================== Bio ===================== -->
     <div class="card" style="margin-bottom: 1.5rem;">
       <h3 style="margin-bottom: 0.6rem;">Bio</h3>
@@ -382,9 +402,27 @@
 
       const { data: profile } = await db
         .from("profiles")
-        .select("username, avatar_url, banner_url, bio, featured_achievement_ids")
+        .select("username, avatar_url, banner_url, bio, contact_type, contact_value, featured_achievement_ids")
         .eq("id", currentUser.id)
         .maybeSingle();
+
+      document.getElementById("contact-type").value = profile?.contact_type || "discord";
+      document.getElementById("contact-input").value = profile?.contact_value || "";
+
+      document.getElementById("save-contact-btn").addEventListener("click", async () => {
+        const statusEl = document.getElementById("contact-status");
+        const type = document.getElementById("contact-type").value;
+        const value = document.getElementById("contact-input").value.trim();
+
+        const { error } = await db
+          .from("profiles")
+          .update({ contact_type: value ? type : null, contact_value: value || null })
+          .eq("id", currentUser.id);
+
+        statusEl.innerHTML = error
+          ? `<div class="status-message error">${error.message}</div>`
+          : `<div class="status-message success">Saved.</div>`;
+      });
 
       featuredIds = new Set(profile?.featured_achievement_ids || []);
       loadAchievementsSection();
