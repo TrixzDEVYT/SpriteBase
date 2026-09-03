@@ -273,6 +273,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabaseClient.js"></script>
   <script src="spriteType.js"></script>
+  <script src="spriteNew.js"></script>
   <script src="auth.js"></script>
   <script>
     let currentUser = null;
@@ -298,7 +299,7 @@
 
     async function loadData() {
       const [{ data: sprites }, { data: owned }, { data: wanted }] = await Promise.all([
-        db.from("sprites").select("id, variant_name, rarity, image_url").eq("is_active", true).order("variant_name"),
+        db.from("sprites").select("id, variant_name, rarity, image_url, created_at").eq("is_active", true).order("variant_name"),
         db.from("user_sprites_owned").select("id, sprite_id, level").eq("user_id", currentUser.id),
         db.from("user_sprites_wanted").select("id, sprite_id").eq("user_id", currentUser.id),
       ]);
@@ -413,11 +414,15 @@
         ? `<span class="crown-badge"><img src="${CROWN_URL}" alt="Level 5" onerror="this.style.display='none'" />5</span>`
         : "";
 
+      const newBadgeHtml = isNewSprite(sprite.created_at)
+        ? `<span class="badge" style="background:rgba(255,209,102,0.2); color:#ffd166;">🆕 NEW</span>`
+        : "";
+
       const tileStateClass = isOwned ? "owned" : (isWanted ? "wanted" : "");
 
       return `
         <div class="sprite-tile rarity-${sprite.rarity} ${tileStateClass} ${quickMarkEnabled ? "quick-mark" : ""}" data-sprite-id="${sprite.id}" title="${quickMarkEnabled ? 'Click = Have · Right-click = Want' : ''}">
-          <div class="tile-top-row">${badgeHtml}${crownHtml}</div>
+          <div class="tile-top-row">${badgeHtml}${newBadgeHtml}${crownHtml}</div>
           ${sprite.image_url
             ? `<img src="${sprite.image_url}" class="tile-image" onerror="this.style.display='none'" />`
             : `<div class="tile-image" style="display:flex; align-items:center; justify-content:center; color:var(--text-muted); font-size:1.5rem;">❔</div>`}

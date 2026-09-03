@@ -26,6 +26,20 @@
       font-size: 0.9rem;
     }
     .admin-table tr:last-child td { border-bottom: none; }
+    .admin-table tbody tr { transition: background 0.1s ease; }
+    .admin-table tbody tr:hover { background: var(--surface-hover); }
+    .admin-stats-bar {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 0.8rem;
+      margin-bottom: 1.5rem;
+    }
+    .admin-stat-pill {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 0.9rem 1rem; text-align: center;
+    }
+    .admin-stat-pill .num { font-family: var(--font-display); font-size: 1.5rem; color: var(--accent); }
+    .admin-stat-pill .lbl { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.1rem; }
     .inline-actions { display: flex; gap: 0.4rem; }
     .inline-actions button {
       padding: 0.3rem 0.7rem;
@@ -47,6 +61,15 @@
     <div class="page-header">
       <h1>Admin Panel</h1>
       <p>Manage Sprite families and variants. Only visible to administrators.</p>
+    </div>
+
+    <div class="admin-stats-bar" id="admin-stats-bar">
+      <div class="admin-stat-pill"><div class="num" id="stat-series">—</div><div class="lbl">Series</div></div>
+      <div class="admin-stat-pill"><div class="num" id="stat-sprites">—</div><div class="lbl">Sprites</div></div>
+      <div class="admin-stat-pill"><div class="num" id="stat-users">—</div><div class="lbl">Verified Users</div></div>
+      <div class="admin-stat-pill"><div class="num" id="stat-news">—</div><div class="lbl">News Posts</div></div>
+      <div class="admin-stat-pill"><div class="num" id="stat-ach">—</div><div class="lbl">Achievements</div></div>
+      <div class="admin-stat-pill"><div class="num" id="stat-clubs">—</div><div class="lbl">Clubs</div></div>
     </div>
 
     <div class="tabs">
@@ -366,6 +389,7 @@
   <script src="supabaseClient.js"></script>
   <script src="profanityFilter.js"></script>
   <script src="spriteType.js"></script>
+  <script src="spriteNew.js"></script>
   <script src="auth.js"></script>
   <script>
     let allSeries = [];
@@ -595,7 +619,7 @@
               ? `<img src="${s.image_url}" style="width:40px; height:40px; object-fit:cover; border-radius:6px;" onerror="this.style.display='none'" />`
               : `<span style="color:var(--text-muted); font-size:0.8rem;">no image</span>`}
           </td>
-          <td>${s.variant_name}</td>
+          <td>${s.variant_name} ${isNewSprite(s.created_at) ? `<span class="badge" style="background:rgba(255,209,102,0.2); color:#ffd166;">🆕 NEW</span>` : ""}</td>
           <td>${s.sprite_series?.name || "—"}</td>
           <td>${getSpriteType(s.variant_name)}</td>
           <td><span class="badge badge-${s.rarity}">${rarityLabel(s.rarity)}</span></td>
@@ -1069,11 +1093,37 @@
     document.getElementById("ach-refresh-btn").addEventListener("click", loadAchievements);
     updateNewsPreview();
 
+    async function loadAdminStats() {
+      const [
+        { count: seriesCount },
+        { count: spritesCount },
+        { count: usersCount },
+        { count: newsCount },
+        { count: achCount },
+        { count: clubsCount },
+      ] = await Promise.all([
+        db.from("sprite_series").select("*", { count: "exact", head: true }),
+        db.from("sprites").select("*", { count: "exact", head: true }),
+        db.from("verified_users").select("*", { count: "exact", head: true }),
+        db.from("news").select("*", { count: "exact", head: true }),
+        db.from("achievements").select("*", { count: "exact", head: true }),
+        db.from("clubs").select("*", { count: "exact", head: true }),
+      ]);
+
+      document.getElementById("stat-series").textContent = seriesCount ?? 0;
+      document.getElementById("stat-sprites").textContent = spritesCount ?? 0;
+      document.getElementById("stat-users").textContent = usersCount ?? 0;
+      document.getElementById("stat-news").textContent = newsCount ?? 0;
+      document.getElementById("stat-ach").textContent = achCount ?? 0;
+      document.getElementById("stat-clubs").textContent = clubsCount ?? 0;
+    }
+
     (async () => {
       const user = await requireAdmin();
       if (!user) return;
 
       await renderNav("admin.html");
+      await loadAdminStats();
       await loadSeries();
       await loadSprites();
     })();
