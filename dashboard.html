@@ -6,45 +6,52 @@
   <title>SpriteBase — Dashboard</title>
   <link rel="stylesheet" href="styles.css" />
   <style>
-    .news-card {
-      background: var(--surface);
+    .hero-card {
+      background: linear-gradient(135deg, rgba(139,92,246,0.12), rgba(255,92,138,0.08));
       border: 1px solid var(--border);
-      border-left: 3px solid var(--accent);
       border-radius: var(--radius);
-      overflow: hidden;
-      margin-bottom: 1rem;
+      padding: 1.8rem;
+      margin-bottom: 1.5rem;
     }
-    .news-card-image {
-      width: 100%;
-      max-height: 240px;
-      object-fit: cover;
-      display: block;
+    .hero-title { font-family: var(--font-display); font-size: 1.9rem; margin: 0; }
+    .hero-subtitle { color: var(--text-muted); margin-top: 0.3rem; }
+    .hero-pills { display: flex; gap: 0.8rem; flex-wrap: wrap; margin-top: 1.3rem; }
+    .hero-pill {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 0.7rem 1.1rem; text-decoration: none; color: inherit;
+      display: flex; align-items: center; gap: 0.6rem; transition: transform 0.12s ease, border-color 0.12s ease;
     }
+    .hero-pill:hover { transform: translateY(-2px); border-color: var(--accent); }
+    .hero-pill .num { font-family: var(--font-display); font-size: 1.4rem; }
+    .hero-pill .lbl { font-size: 0.75rem; color: var(--text-muted); }
+
+    .action-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .action-tile {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 1.2rem; text-decoration: none; color: inherit; transition: transform 0.12s ease, border-color 0.12s ease;
+    }
+    .action-tile:hover { transform: translateY(-3px); border-color: var(--accent); }
+    .action-tile .icon { font-size: 1.6rem; }
+    .action-tile .title { font-family: var(--font-display); font-size: 1.05rem; margin-top: 0.5rem; }
+    .action-tile .desc { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem; }
+
+    .nudge-card {
+      background: rgba(139,92,246,0.08); border: 1px solid var(--accent);
+      border-radius: var(--radius); padding: 1.1rem 1.3rem; margin-bottom: 1.5rem;
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.8rem;
+    }
+
+    .news-card {
+      background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--accent);
+      border-radius: var(--radius); overflow: hidden; margin-bottom: 1rem;
+    }
+    .news-card-image { width: 100%; max-height: 240px; object-fit: cover; display: block; }
     .news-card-body { padding: 1.2rem 1.4rem; }
-    .news-card-title {
-      font-family: var(--font-display);
-      font-size: 1.25rem;
-      margin: 0;
-    }
-    .news-card-date {
-      color: var(--text-muted);
-      font-size: 0.78rem;
-      margin-top: 0.2rem;
-    }
-    .news-card-text {
-      font-size: 0.92rem;
-      color: var(--text-muted);
-      margin-top: 0.8rem;
-      line-height: 1.5;
-    }
-    .section-heading {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      margin: 2rem 0 1rem;
-      font-family: var(--font-display);
-      font-size: 1.3rem;
-    }
+    .news-card-title { font-family: var(--font-display); font-size: 1.25rem; margin: 0; }
+    .news-card-date { color: var(--text-muted); font-size: 0.78rem; margin-top: 0.2rem; }
+    .news-card-text { font-size: 0.92rem; color: var(--text-muted); margin-top: 0.8rem; line-height: 1.5; }
+
+    .section-heading { display: flex; align-items: center; gap: 0.5rem; margin: 2rem 0 1rem; font-family: var(--font-display); font-size: 1.3rem; }
     .section-heading:first-of-type { margin-top: 0; }
   </style>
 </head>
@@ -52,24 +59,21 @@
   <div id="site-header"></div>
 
   <div class="page">
-    <div class="page-header">
-      <h1 id="welcome-title">Welcome</h1>
-      <p>Here's your SpriteBase summary.</p>
+    <div class="hero-card">
+      <h1 class="hero-title" id="welcome-title">Welcome</h1>
+      <p class="hero-subtitle">Here's your SpriteBase summary.</p>
+      <div class="hero-pills">
+        <a href="collection.html" class="hero-pill"><span class="num" id="stat-owned">—</span><span class="lbl">Sprites owned</span></a>
+        <a href="collection.html" class="hero-pill"><span class="num" id="stat-wanted">—</span><span class="lbl">Wanted</span></a>
+        <a href="trades.html" class="hero-pill"><span class="num" id="stat-trades">—</span><span class="lbl">Active trades</span></a>
+        <a href="clubs.html" class="hero-pill"><span class="num" id="stat-clubs">—</span><span class="lbl">Clubs joined</span></a>
+        <a href="profile.html" class="hero-pill"><span class="num" id="stat-achievements">—</span><span class="lbl">Achievements</span></a>
+      </div>
     </div>
 
-    <div class="stats-grid">
-      <div class="stat-card">
-        <div class="stat-value" id="stat-owned">—</div>
-        <div class="stat-label">Sprites in your collection</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-value" id="stat-wanted">—</div>
-        <div class="stat-label">Sprites you're looking for</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-value" id="stat-trades">—</div>
-        <div class="stat-label">Active trades</div>
-      </div>
+    <div id="profile-nudge" style="display:none;" class="nudge-card">
+      <div>👋 Your profile is looking a little empty. Add an avatar, bio, and contact info so others can get to know you.</div>
+      <a href="profile.html" class="btn btn-primary">Complete Profile</a>
     </div>
 
     <div id="invites-section" style="display:none; margin-bottom: 1.5rem;">
@@ -77,31 +81,27 @@
       <div id="invites-list"></div>
     </div>
 
-    <div class="card">
-      <h3 style="margin-bottom: 1rem;">Quick actions</h3>
-      <div style="display:flex; gap: 0.8rem; flex-wrap: wrap;">
-        <a href="collection.html" class="btn btn-primary">Edit my collection</a>
-        <a href="trades.html" class="btn btn-ghost">View trades</a>
-      </div>
-    </div>
-
-    <div class="card" style="margin-top: 1.5rem;">
-      <h3 style="margin-bottom: 0.4rem;">Contact info</h3>
-      <p style="color: var(--text-muted); font-size: 0.88rem; margin-top:0; margin-bottom: 1rem;">
-        Shown to other users on your trades so they can reach you (Discord, etc). Leave blank to hide it.
-      </p>
-      <label for="contact-type">Platform</label>
-      <select id="contact-type">
-        <option value="discord">Discord</option>
-        <option value="twitter">Twitter / X</option>
-        <option value="instagram">Instagram</option>
-        <option value="email">Email</option>
-        <option value="other">Other</option>
-      </select>
-      <label for="contact-input">Username / handle</label>
-      <input type="text" id="contact-input" placeholder="username" maxlength="100" />
-      <div id="contact-status"></div>
-      <button class="btn btn-primary" id="save-contact-btn">Save</button>
+    <div class="action-tiles">
+      <a href="collection.html" class="action-tile">
+        <div class="icon">📦</div>
+        <div class="title">Collection</div>
+        <div class="desc">Track and organize your Sprites</div>
+      </a>
+      <a href="trades.html" class="action-tile">
+        <div class="icon">🔄</div>
+        <div class="title">Trades</div>
+        <div class="desc">Browse offers or post your own</div>
+      </a>
+      <a href="clubs.html" class="action-tile">
+        <div class="icon">🏕️</div>
+        <div class="title">Clubs</div>
+        <div class="desc">Join a community of collectors</div>
+      </a>
+      <a href="profile.html" class="action-tile">
+        <div class="icon">👤</div>
+        <div class="title">Profile</div>
+        <div class="desc">Avatar, bio, achievements & more</div>
+      </a>
     </div>
 
     <div class="section-heading">📰 Latest News</div>
@@ -112,10 +112,24 @@
       <p style="margin-top:0; color: var(--text-muted);">
         Found a bug, or have feedback or a question about SpriteBase? Reach out on Discord.
       </p>
-      <div style="display:flex; gap: 0.8rem; flex-wrap: wrap;">
-        <a href="https://ko-fi.com/tryxie" target="_blank" rel="noopener" class="btn btn-primary">☕ Support on Ko-fi</a>
-        <span class="btn btn-ghost" style="cursor:default;">🎮 Discord: tryxie.txt</span>
-      </div>
+      <span class="btn btn-ghost" style="cursor:default;">🎮 Discord: tryxie.txt</span>
+    </div>
+
+    <div class="section-heading">✦ Always Free</div>
+    <div class="card">
+      <p style="margin-top:0; color: var(--text-muted);">
+        SpriteBase will always be free for everyone. No subscriptions, no premium features, and no paywalls.
+      </p>
+      <p style="color: var(--text-muted);">
+        SpriteBase is a community-driven passion project, and we want to keep it accessible to everyone.
+      </p>
+      <p style="color: var(--text-muted);">
+        If you enjoy SpriteBase and want to support its development, donations through Ko-fi are always appreciated. 💙
+      </p>
+      <p style="color: var(--text-muted); margin-bottom: 1rem;">
+        Free for everyone. Always. ✦
+      </p>
+      <a href="https://ko-fi.com/tryxie" target="_blank" rel="noopener" class="btn btn-primary">☕ Support on Ko-fi</a>
     </div>
   </div>
 
@@ -131,15 +145,16 @@
 
       const { data: profile } = await db
         .from("profiles")
-        .select("username, contact_type, contact_value")
+        .select("username, avatar_url, bio, contact_value")
         .eq("id", user.id)
         .maybeSingle();
 
       document.getElementById("welcome-title").textContent =
         "Welcome, " + (profile?.username || "back");
 
-      document.getElementById("contact-type").value = profile?.contact_type || "discord";
-      document.getElementById("contact-input").value = profile?.contact_value || "";
+      if (!profile?.avatar_url || !profile?.bio || !profile?.contact_value) {
+        document.getElementById("profile-nudge").style.display = "flex";
+      }
 
       // Invitaciones a clubs pendientes
       const { data: invites } = await db
@@ -173,24 +188,6 @@
         }));
       }
 
-      document.getElementById("save-contact-btn").addEventListener("click", async () => {
-        const statusEl = document.getElementById("contact-status");
-        const type = document.getElementById("contact-type").value;
-        const value = document.getElementById("contact-input").value.trim();
-
-        const { error } = await db
-          .from("profiles")
-          .update({
-            contact_type: value ? type : null,
-            contact_value: value || null,
-          })
-          .eq("id", user.id);
-
-        statusEl.innerHTML = error
-          ? `<div class="status-message error">${error.message}</div>`
-          : `<div class="status-message success">Saved.</div>`;
-      });
-
       // Noticias
       const { data: newsItems } = await db
         .from("news")
@@ -223,16 +220,20 @@
         feedEl.innerHTML = `<div class="empty-state">No news yet — check back soon!</div>`;
       }
 
-      const [{ count: ownedCount }, { count: wantedCount }, { count: tradesCount }] =
+      const [{ count: ownedCount }, { count: wantedCount }, { count: tradesCount }, { count: clubsCount }, { count: achCount }] =
         await Promise.all([
           db.from("user_sprites_owned").select("*", { count: "exact", head: true }).eq("user_id", user.id),
           db.from("user_sprites_wanted").select("*", { count: "exact", head: true }).eq("user_id", user.id),
           db.from("trades").select("*", { count: "exact", head: true }).eq("user_id", user.id).eq("status", "active"),
+          db.from("club_members").select("*", { count: "exact", head: true }).eq("user_id", user.id),
+          db.from("user_achievements").select("*", { count: "exact", head: true }).eq("user_id", user.id),
         ]);
 
       document.getElementById("stat-owned").textContent = ownedCount ?? 0;
       document.getElementById("stat-wanted").textContent = wantedCount ?? 0;
       document.getElementById("stat-trades").textContent = tradesCount ?? 0;
+      document.getElementById("stat-clubs").textContent = clubsCount ?? 0;
+      document.getElementById("stat-achievements").textContent = achCount ?? 0;
     })();
   </script>
 </body>
