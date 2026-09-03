@@ -502,7 +502,7 @@
         .from("trades")
         .select(`
           id, title, description, status, created_at, user_id,
-          profiles ( username, avatar_url, contact_type, contact_value ),
+          profiles!trades_user_id_fkey ( username, avatar_url, contact_type, contact_value ),
           trade_offer_items ( sprites ( variant_name, rarity, image_url ) ),
           trade_want_items ( sprites ( variant_name, rarity, image_url ) )
         `)
