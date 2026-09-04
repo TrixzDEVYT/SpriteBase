@@ -626,6 +626,8 @@
       currentUser = await requireAuth();
       if (!currentUser) return;
 
+      await loadSpriteVariantTypes(db);
+
       await renderNav("collection.html");
       await loadData();
     })();

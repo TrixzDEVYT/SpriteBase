@@ -1,32 +1,47 @@
 // =====================================================================
 // spriteType.js — detecta el "Tipo" de un sprite a partir de su nombre
-// visible (variant_name), buscando palabras clave conocidas.
+// visible (variant_name), buscando palabras clave.
 //
-// Ejemplo:
-//   "Gold Jackrabbit Sprite"          -> "Gold"
-//   "Cheat Master Jackrabbit Sprite"  -> "Cheat Master"
-//   "Jackrabbit Sprite"               -> "Normal" (sin palabra clave)
+// Los tipos (Gold, Cheat Master, etc.) YA NO están hardcodeados aquí:
+// viven en la tabla sprite_variant_types y se gestionan desde
+// Admin > Variant Types. Este archivo solo sabe cómo APLICAR esa lista.
 //
-// Para añadir más tipos, solo agrega una entrada al array. El orden
-// importa: las palabras clave más específicas van primero, para que
-// "cheat master" se detecte antes que una futura keyword más genérica
-// que pudiera solaparse.
+// Uso en cada página:
+//   await loadSpriteVariantTypes(db);   // una vez, al iniciar
+//   getSpriteType(sprite.variant_name); // ya funciona en todo el resto del código
 // =====================================================================
 
-const SPRITE_TYPE_KEYWORDS = [
-  "cheat master",
-  "gold",
-  // Agrega más aquí, por ejemplo: "renegade", "shadow", "og", "frozen"...
+// Respaldo por si la carga desde la base de datos falla o aún no corrió
+// (así nada se rompe mientras tanto).
+let SPRITE_VARIANT_TYPES = [
+  { keyword: "cheat master", display_name: "Cheat Master" },
+  { keyword: "gold", display_name: "Gold" },
 ];
+
+async function loadSpriteVariantTypes(db) {
+  try {
+    const { data, error } = await db
+      .from("sprite_variant_types")
+      .select("keyword, display_name")
+      .eq("is_active", true)
+      .order("sort_order");
+
+    if (!error && data && data.length > 0) {
+      SPRITE_VARIANT_TYPES = data;
+    }
+  } catch (e) {
+    // Si algo falla, se queda con el respaldo de arriba.
+    console.warn("Could not load sprite variant types, using fallback list.", e);
+  }
+}
 
 function getSpriteType(variantName) {
   if (!variantName) return "Normal";
   const lower = variantName.toLowerCase();
 
-  for (const keyword of SPRITE_TYPE_KEYWORDS) {
-    if (lower.includes(keyword)) {
-      // Convierte a Title Case: "cheat master" -> "Cheat Master"
-      return keyword.replace(/\b\w/g, (c) => c.toUpperCase());
+  for (const type of SPRITE_VARIANT_TYPES) {
+    if (lower.includes(type.keyword)) {
+      return type.display_name;
     }
   }
 

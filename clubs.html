@@ -106,6 +106,7 @@
     let currentUser = null;
     let allClubs = [];
     let myClubIds = new Set();
+    let verifiedClubIds = new Set();
 
     function slugify(text) {
       return text.toLowerCase().trim().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-");
@@ -139,6 +140,9 @@
       const bannerHtml = club.banner_url
         ? `<img src="${club.banner_url}" class="club-banner" onerror="this.outerHTML='<div class=\\'club-banner-empty\\'></div>'" />`
         : `<div class="club-banner-empty"></div>`;
+      const verifiedHtml = verifiedClubIds.has(club.id)
+        ? `<img src="https://static.vecteezy.com/system/resources/thumbnails/047/309/930/small/verified-badge-profile-icon-png.png" alt="Verified" style="width:15px; height:15px; vertical-align:middle; margin-left:0.3rem;" />`
+        : "";
 
       return `
         <a href="club.html?slug=${encodeURIComponent(club.slug)}" style="text-decoration:none; color:inherit;">
@@ -147,7 +151,7 @@
             <div class="club-card-top">${iconHtml}</div>
             <div class="club-card-body">
               <div style="display:flex; justify-content:space-between; align-items:center;">
-                <div class="club-name">${club.name}</div>
+                <div class="club-name">${club.name}${verifiedHtml}</div>
                 <span class="club-visibility-badge">${club.visibility}</span>
               </div>
               <div class="club-desc">${club.description || "No description yet."}</div>
@@ -162,10 +166,11 @@
       const grid = document.getElementById("clubs-grid");
       grid.innerHTML = `<p style="color:var(--text-muted);">Loading clubs...</p>`;
 
-      const [{ data: clubs, error }, { data: stats }, { data: myMemberships }] = await Promise.all([
+      const [{ data: clubs, error }, { data: stats }, { data: myMemberships }, { data: verified }] = await Promise.all([
         db.from("clubs").select("*").order("created_at", { ascending: false }),
         db.from("club_stats").select("club_id, member_count"),
         db.from("club_members").select("club_id").eq("user_id", currentUser.id),
+        db.from("verified_clubs").select("club_id"),
       ]);
 
       if (error) {
@@ -175,6 +180,7 @@
 
       allClubs = clubs || [];
       myClubIds = new Set((myMemberships || []).map(m => m.club_id));
+      verifiedClubIds = new Set((verified || []).map(v => v.club_id));
       const statsMap = new Map((stats || []).map(s => [s.club_id, s.member_count]));
 
       renderBrowse(statsMap);

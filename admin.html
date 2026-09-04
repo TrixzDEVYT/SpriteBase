@@ -40,6 +40,22 @@
     }
     .admin-stat-pill .num { font-family: var(--font-display); font-size: 1.5rem; color: var(--accent); }
     .admin-stat-pill .lbl { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.1rem; }
+
+    .admin-tabs {
+      display: flex; flex-wrap: wrap; gap: 0.5rem;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; padding: 0.4rem; margin-bottom: 1.5rem;
+    }
+    .admin-tabs .tab {
+      background: transparent; border: none; color: var(--text-muted);
+      padding: 0.55rem 1rem; border-radius: 10px; font-size: 0.88rem;
+      font-family: var(--font-body); cursor: pointer; transition: all 0.15s ease;
+    }
+    .admin-tabs .tab:hover { color: var(--text); background: var(--surface-hover); }
+    .admin-tabs .tab.active {
+      background: var(--accent); color: white;
+      box-shadow: 0 4px 14px -4px rgba(139,92,246,0.6);
+    }
     .inline-actions { display: flex; gap: 0.4rem; }
     .inline-actions button {
       padding: 0.3rem 0.7rem;
@@ -72,12 +88,13 @@
       <div class="admin-stat-pill"><div class="num" id="stat-clubs">—</div><div class="lbl">Clubs</div></div>
     </div>
 
-    <div class="tabs">
-      <button class="tab active" data-tab="series">Sprite Series</button>
-      <button class="tab" data-tab="sprites">Sprites</button>
-      <button class="tab" data-tab="users">Users</button>
-      <button class="tab" data-tab="news">News</button>
-      <button class="tab" data-tab="achievements">Achievements</button>
+    <div class="tabs admin-tabs">
+      <button class="tab active" data-tab="series">🧬 Sprite Series</button>
+      <button class="tab" data-tab="sprites">👾 Sprites</button>
+      <button class="tab" data-tab="variant-types">🏷️ Variant Types</button>
+      <button class="tab" data-tab="users">👥 Users</button>
+      <button class="tab" data-tab="news">📰 News</button>
+      <button class="tab" data-tab="achievements">🏆 Achievements</button>
     </div>
 
     <!-- =================== SERIES =================== -->
@@ -202,6 +219,53 @@
     </div>
 
     <!-- =================== USERS (verification) =================== -->
+    <!-- =================== VARIANT TYPES =================== -->
+    <div id="variant-types-section" style="display:none;">
+      <div class="card">
+        <h3 style="margin-bottom: 1rem;" id="vt-form-title">New Variant Type</h3>
+        <input type="hidden" id="vt-id" />
+        <div class="form-grid">
+          <div>
+            <label for="vt-keyword">Keyword (lowercase, matched in the sprite name)</label>
+            <input type="text" id="vt-keyword" placeholder="gold" />
+          </div>
+          <div>
+            <label for="vt-display-name">Display name (shown to users)</label>
+            <input type="text" id="vt-display-name" placeholder="Gold" />
+          </div>
+          <div>
+            <label for="vt-sort-order">Priority (checked first = lower number)</label>
+            <input type="number" id="vt-sort-order" value="0" />
+          </div>
+        </div>
+        <p style="color:var(--text-muted); font-size:0.82rem; margin-top:-0.4rem;">
+          Example: if a sprite is named "Gold Cheat Master Jackrabbit", give "Cheat Master" a lower priority number than "Gold" so it matches first.
+        </p>
+        <div id="vt-status"></div>
+        <div style="display:flex; gap:0.6rem;">
+          <button class="btn btn-primary" id="vt-save-btn">Save Type</button>
+          <button class="btn btn-ghost" id="vt-cancel-btn" style="display:none;">Cancel edit</button>
+        </div>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top: 1.2rem;">
+        <h3 style="margin:0;">All Variant Types</h3>
+        <button class="btn btn-ghost" id="vt-refresh-btn">↻ Refresh</button>
+      </div>
+      <table class="admin-table" id="vt-table">
+        <thead>
+          <tr>
+            <th>Display Name</th>
+            <th>Keyword</th>
+            <th>Priority</th>
+            <th>Active</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="vt-tbody"></tbody>
+      </table>
+    </div>
+
     <div id="users-section" style="display:none;">
       <div class="card">
         <h3 style="margin-bottom: 1rem;">Verify a user</h3>
@@ -223,6 +287,28 @@
           </tr>
         </thead>
         <tbody id="verified-tbody"></tbody>
+      </table>
+
+      <div class="card" style="margin-top: 1.5rem;">
+        <h3 style="margin-bottom: 1rem;">Verify a club</h3>
+        <label for="club-search">Search by club name</label>
+        <input type="text" id="club-search" placeholder="Type a club name..." />
+        <div id="club-search-results"></div>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top: 1.2rem;">
+        <h3 style="margin:0;">Verified Clubs</h3>
+        <button class="btn btn-ghost" id="verified-clubs-refresh-btn">↻ Refresh</button>
+      </div>
+      <table class="admin-table" id="verified-clubs-table">
+        <thead>
+          <tr>
+            <th>Club</th>
+            <th>Verified since</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="verified-clubs-tbody"></tbody>
       </table>
     </div>
 
@@ -477,10 +563,12 @@
         const target = tab.dataset.tab;
         document.getElementById("series-section").style.display = target === "series" ? "block" : "none";
         document.getElementById("sprites-section").style.display = target === "sprites" ? "block" : "none";
+        document.getElementById("variant-types-section").style.display = target === "variant-types" ? "block" : "none";
         document.getElementById("users-section").style.display = target === "users" ? "block" : "none";
         document.getElementById("news-section").style.display = target === "news" ? "block" : "none";
         document.getElementById("achievements-section").style.display = target === "achievements" ? "block" : "none";
-        if (target === "users") loadVerifiedUsers();
+        if (target === "variant-types") loadVariantTypesAdmin();
+        if (target === "users") { loadVerifiedUsers(); loadVerifiedClubs(); }
         if (target === "news") loadNewsPosts();
         if (target === "achievements") loadAchievements();
       });
@@ -630,6 +718,11 @@
               <button class="btn btn-ghost" onclick="toggleSpriteActive('${s.id}', ${s.is_active})">
                 ${s.is_active ? "Disable" : "Enable"}
               </button>
+              ${getSpriteType(s.variant_name) === "Normal" ? `
+                <button class="btn btn-ghost" onclick='quickAddVariant(${JSON.stringify(s).replace(/'/g, "&apos;")}, "Gold")'>🥇 Gold</button>
+                <button class="btn btn-ghost" onclick='quickAddVariant(${JSON.stringify(s).replace(/'/g, "&apos;")}, "Cheat Master")'>🎯 Cheat Master</button>
+              ` : ""}
+              <button class="btn btn-ghost" onclick='duplicateSprite(${JSON.stringify(s).replace(/'/g, "&apos;")})'>⧉ Duplicate</button>
             </div>
           </td>
         </tr>
@@ -648,6 +741,59 @@
       document.getElementById("sprite-form-title").textContent = "Edit Sprite";
       document.getElementById("sprite-cancel-btn").style.display = "inline-flex";
       updateSpritePreview();
+    };
+
+    /**
+     * Prellena el formulario como un sprite NUEVO (sin id) con los
+     * valores dados, para que solo falte ajustar y guardar. Se usa
+     * tanto para los accesos rápidos Gold/Cheat Master como para Duplicate.
+     */
+    function prefillNewSprite({ seriesId, rarity, variantName, imageUrl, description }) {
+      document.getElementById("sprite-id").value = ""; // siempre nuevo, nunca edita el original
+      document.getElementById("sprite-variant").value = variantName || "";
+      document.getElementById("sprite-slug").dataset.touched = ""; // deja que se autogenere de nuevo
+
+      // Asignar .value por JS no dispara el evento "input" que genera el
+      // slug automáticamente, así que lo calculamos aquí a mano con la
+      // misma lógica que usa el campo cuando escribes a mano.
+      const seriesSelect = document.getElementById("sprite-series");
+      seriesSelect.value = seriesId || "";
+      const seriesOpt = seriesSelect.options[seriesSelect.selectedIndex];
+      const seriesSlug = seriesOpt ? seriesOpt.dataset.slug : "";
+      document.getElementById("sprite-slug").value = seriesSlug
+        ? `${seriesSlug}-${slugify(variantName || "")}`
+        : slugify(variantName || "");
+
+      document.getElementById("sprite-rarity").value = rarity || "common";
+      document.getElementById("sprite-image").value = imageUrl || "";
+      document.getElementById("sprite-description").value = description || "";
+      document.getElementById("sprite-form-title").textContent = "New Sprite";
+      document.getElementById("sprite-cancel-btn").style.display = "none";
+      updateSpritePreview();
+      document.getElementById("sprite-variant").scrollIntoView({ behavior: "smooth", block: "center" });
+      document.getElementById("sprite-variant").focus();
+    }
+
+    window.quickAddVariant = (s, prefix) => {
+      prefillNewSprite({
+        seriesId: s.series_id,
+        rarity: s.rarity,
+        variantName: `${prefix} ${s.variant_name}`,
+        imageUrl: "", // casi siempre necesita una imagen distinta a la Normal
+        description: s.description,
+      });
+    };
+
+    window.duplicateSprite = (s) => {
+      const newName = prompt(`New variant name (based on "${s.variant_name}"):`, s.variant_name);
+      if (!newName) return;
+      prefillNewSprite({
+        seriesId: s.series_id,
+        rarity: s.rarity,
+        variantName: newName,
+        imageUrl: s.image_url,
+        description: s.description,
+      });
     };
 
     function resetSpriteForm() {
@@ -713,6 +859,106 @@
 
     document.getElementById("series-refresh-btn").addEventListener("click", loadSeries);
     document.getElementById("sprites-refresh-btn").addEventListener("click", loadSprites);
+
+    // ---------------- Variant Types ----------------
+    function resetVtForm() {
+      document.getElementById("vt-id").value = "";
+      document.getElementById("vt-keyword").value = "";
+      document.getElementById("vt-display-name").value = "";
+      document.getElementById("vt-sort-order").value = "0";
+      document.getElementById("vt-form-title").textContent = "New Variant Type";
+      document.getElementById("vt-cancel-btn").style.display = "none";
+    }
+
+    document.getElementById("vt-cancel-btn").addEventListener("click", resetVtForm);
+
+    async function loadVariantTypesAdmin() {
+      const { data, error } = await db.from("sprite_variant_types").select("*").order("sort_order");
+      const tbody = document.getElementById("vt-tbody");
+
+      if (error) {
+        tbody.innerHTML = `<tr><td colspan="5">Error: ${error.message}</td></tr>`;
+        return;
+      }
+      if (!data || data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="color:var(--text-muted);">No variant types yet.</td></tr>`;
+        return;
+      }
+
+      window._vtCache = data;
+
+      tbody.innerHTML = data.map(v => `
+        <tr>
+          <td>${v.display_name}</td>
+          <td><code>${v.keyword}</code></td>
+          <td>${v.sort_order}</td>
+          <td>${v.is_active ? "✅" : "—"}</td>
+          <td>
+            <div class="inline-actions">
+              <button class="btn btn-ghost" onclick="editVariantType('${v.id}')">Edit</button>
+              <button class="btn btn-ghost" onclick="toggleVtActive('${v.id}', ${v.is_active})">${v.is_active ? "Disable" : "Enable"}</button>
+              <button class="btn btn-danger" onclick="deleteVariantType('${v.id}')">Delete</button>
+            </div>
+          </td>
+        </tr>
+      `).join("");
+    }
+
+    window.editVariantType = (id) => {
+      const v = window._vtCache.find(x => x.id === id);
+      if (!v) return;
+      document.getElementById("vt-id").value = v.id;
+      document.getElementById("vt-keyword").value = v.keyword;
+      document.getElementById("vt-display-name").value = v.display_name;
+      document.getElementById("vt-sort-order").value = v.sort_order;
+      document.getElementById("vt-form-title").textContent = "Edit Variant Type";
+      document.getElementById("vt-cancel-btn").style.display = "inline-flex";
+    };
+
+    window.toggleVtActive = async (id, current) => {
+      await db.from("sprite_variant_types").update({ is_active: !current }).eq("id", id);
+      loadVariantTypesAdmin();
+    };
+
+    window.deleteVariantType = async (id) => {
+      if (!confirm("Delete this variant type? Sprites already using this keyword will just show as 'Normal' from now on.")) return;
+      await db.from("sprite_variant_types").delete().eq("id", id);
+      loadVariantTypesAdmin();
+    };
+
+    document.getElementById("vt-save-btn").addEventListener("click", async () => {
+      const statusEl = document.getElementById("vt-status");
+      const id = document.getElementById("vt-id").value;
+      const keyword = document.getElementById("vt-keyword").value.trim().toLowerCase();
+      const display_name = document.getElementById("vt-display-name").value.trim();
+      const sort_order = parseInt(document.getElementById("vt-sort-order").value, 10) || 0;
+
+      if (!keyword || !display_name) {
+        statusEl.innerHTML = `<div class="status-message error">Keyword and display name are required.</div>`;
+        return;
+      }
+      if (containsProfanity(display_name)) {
+        statusEl.innerHTML = `<div class="status-message error">Please remove inappropriate language.</div>`;
+        return;
+      }
+
+      const payload = { keyword, display_name, sort_order };
+      const { error } = id
+        ? await db.from("sprite_variant_types").update(payload).eq("id", id)
+        : await db.from("sprite_variant_types").insert(payload);
+
+      if (error) {
+        statusEl.innerHTML = `<div class="status-message error">${error.message}</div>`;
+        return;
+      }
+
+      statusEl.innerHTML = `<div class="status-message success">Saved.</div>`;
+      resetVtForm();
+      loadVariantTypesAdmin();
+      await loadSpriteVariantTypes(db); // refresca la lista en memoria para el resto del panel
+    });
+
+    document.getElementById("vt-refresh-btn").addEventListener("click", loadVariantTypesAdmin);
 
     // ---------------- Users: verificación ----------------
     let verifiedIds = new Set();
@@ -815,6 +1061,101 @@
     }
 
     document.getElementById("verified-refresh-btn").addEventListener("click", loadVerifiedUsers);
+
+    // ---------------- Clubs: verificación ----------------
+    let verifiedClubIds = new Set();
+
+    async function loadVerifiedClubIds() {
+      const { data } = await db.from("verified_clubs").select("club_id");
+      verifiedClubIds = new Set((data || []).map(r => r.club_id));
+    }
+
+    async function loadVerifiedClubs() {
+      await loadVerifiedClubIds();
+      const tbody = document.getElementById("verified-clubs-tbody");
+
+      if (verifiedClubIds.size === 0) {
+        tbody.innerHTML = `<tr><td colspan="3" style="color:var(--text-muted);">No verified clubs yet.</td></tr>`;
+        return;
+      }
+
+      const { data, error } = await db
+        .from("verified_clubs")
+        .select("verified_at, clubs(id, name)")
+        .order("verified_at", { ascending: false });
+
+      if (error) {
+        tbody.innerHTML = `<tr><td colspan="3">Error: ${error.message}</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = data.map(row => `
+        <tr>
+          <td>${row.clubs?.name || "?"}</td>
+          <td>${new Date(row.verified_at).toLocaleDateString()}</td>
+          <td><button class="btn btn-ghost unverify-club-btn" data-id="${row.clubs?.id}">Unverify</button></td>
+        </tr>
+      `).join("");
+
+      tbody.querySelectorAll(".unverify-club-btn").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          await db.from("verified_clubs").delete().eq("club_id", btn.dataset.id);
+          loadVerifiedClubs();
+        });
+      });
+    }
+
+    let clubSearchTimeout = null;
+    document.getElementById("club-search").addEventListener("input", (e) => {
+      clearTimeout(clubSearchTimeout);
+      const term = e.target.value.trim();
+      clubSearchTimeout = setTimeout(() => searchClubs(term), 300);
+    });
+
+    async function searchClubs(term) {
+      const resultsEl = document.getElementById("club-search-results");
+      if (!term) {
+        resultsEl.innerHTML = "";
+        return;
+      }
+
+      const { data, error } = await db.from("clubs").select("id, name").ilike("name", `%${term}%`).limit(10);
+
+      if (error) {
+        resultsEl.innerHTML = `<div class="status-message error">${error.message}</div>`;
+        return;
+      }
+      if (!data || data.length === 0) {
+        resultsEl.innerHTML = `<p style="color:var(--text-muted); font-size:0.9rem;">No clubs found.</p>`;
+        return;
+      }
+
+      await loadVerifiedClubIds();
+
+      resultsEl.innerHTML = data.map(c => `
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:0.5rem 0; border-bottom:1px solid var(--border);">
+          <span>${c.name}</span>
+          <button class="btn ${verifiedClubIds.has(c.id) ? "btn-ghost" : "btn-primary"} verify-club-toggle-btn" data-id="${c.id}" data-verified="${verifiedClubIds.has(c.id)}">
+            ${verifiedClubIds.has(c.id) ? "✓ Verified — Unverify" : "Verify this club"}
+          </button>
+        </div>
+      `).join("");
+
+      resultsEl.querySelectorAll(".verify-club-toggle-btn").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const isVerified = btn.dataset.verified === "true";
+          if (isVerified) {
+            await db.from("verified_clubs").delete().eq("club_id", btn.dataset.id);
+          } else {
+            await db.from("verified_clubs").insert({ club_id: btn.dataset.id });
+          }
+          searchClubs(document.getElementById("club-search").value.trim());
+          loadVerifiedClubs();
+        });
+      });
+    }
+
+    document.getElementById("verified-clubs-refresh-btn").addEventListener("click", loadVerifiedClubs);
 
     // ---------------- News ----------------
     function escapeHtml(str) {
@@ -1121,6 +1462,8 @@
     (async () => {
       const user = await requireAdmin();
       if (!user) return;
+
+      await loadSpriteVariantTypes(db);
 
       await renderNav("admin.html");
       await loadAdminStats();

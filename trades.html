@@ -1072,6 +1072,7 @@
       currentUsername = profile?.username || "you";
 
       await renderNav("trades.html");
+      await loadSpriteVariantTypes(db);
       await loadMatchMap();
       await loadVerifiedIds();
       await loadSpriteCatalogForFilter();
