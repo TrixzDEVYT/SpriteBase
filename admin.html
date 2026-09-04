@@ -718,10 +718,6 @@
               <button class="btn btn-ghost" onclick="toggleSpriteActive('${s.id}', ${s.is_active})">
                 ${s.is_active ? "Disable" : "Enable"}
               </button>
-              ${getSpriteType(s.variant_name) === "Normal" ? `
-                <button class="btn btn-ghost" onclick='quickAddVariant(${JSON.stringify(s).replace(/'/g, "&apos;")}, "Gold")'>🥇 Gold</button>
-                <button class="btn btn-ghost" onclick='quickAddVariant(${JSON.stringify(s).replace(/'/g, "&apos;")}, "Cheat Master")'>🎯 Cheat Master</button>
-              ` : ""}
               <button class="btn btn-ghost" onclick='duplicateSprite(${JSON.stringify(s).replace(/'/g, "&apos;")})'>⧉ Duplicate</button>
             </div>
           </td>
@@ -746,7 +742,7 @@
     /**
      * Prellena el formulario como un sprite NUEVO (sin id) con los
      * valores dados, para que solo falte ajustar y guardar. Se usa
-     * tanto para los accesos rápidos Gold/Cheat Master como para Duplicate.
+     * lo usa Duplicate para partir de un sprite existente.
      */
     function prefillNewSprite({ seriesId, rarity, variantName, imageUrl, description }) {
       document.getElementById("sprite-id").value = ""; // siempre nuevo, nunca edita el original
@@ -773,16 +769,6 @@
       document.getElementById("sprite-variant").scrollIntoView({ behavior: "smooth", block: "center" });
       document.getElementById("sprite-variant").focus();
     }
-
-    window.quickAddVariant = (s, prefix) => {
-      prefillNewSprite({
-        seriesId: s.series_id,
-        rarity: s.rarity,
-        variantName: `${prefix} ${s.variant_name}`,
-        imageUrl: "", // casi siempre necesita una imagen distinta a la Normal
-        description: s.description,
-      });
-    };
 
     window.duplicateSprite = (s) => {
       const newName = prompt(`New variant name (based on "${s.variant_name}"):`, s.variant_name);
